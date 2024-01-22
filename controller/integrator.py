@@ -26,7 +26,7 @@ class Integrator():
     def __init__(self, config) -> None:
         self.player = Player(Renderer(config.get('renderer_name'), config.get('renderer_url'), True))
         self.player_name = config.get('renderer_name')
-        self.media_server = MediaServer(config.get('server_url'))
+        self.media_server = MediaServer(config.get('mediaserver_url'))
 
         self.state = State()
         self.scheduler = Scheduler()
