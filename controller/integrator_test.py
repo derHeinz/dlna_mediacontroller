@@ -309,7 +309,8 @@ class TestIntegrator(unittest.TestCase):
         i = self._testee()
 
         i.play(self.DEFAULT_URL, None, None, True)
-        self._assert_state(i.state, url=self.DEFAULT_URL, last_played_url=self.DEFAULT_URL, running=True, played_count=1, loop=True)
+        self._assert_state(i.state, url=self.DEFAULT_URL, last_played_url=self.DEFAULT_URL, running=True,
+                           played_count=1, loop=True)
 
         # first loop, interrupted
         scheduler_mock.reset_mock()

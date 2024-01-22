@@ -1,13 +1,12 @@
 from controller.scheduler import Scheduler
 import unittest
-from unittest.mock import patch, call
 
 
 class TestIntegrator(unittest.TestCase):
 
     def _testee(self):
         return Scheduler()
-    
+
     def _noop(self):
         pass
 
