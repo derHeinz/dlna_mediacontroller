@@ -1,0 +1,2 @@
+class RequestInvalidException(Exception):
+    pass

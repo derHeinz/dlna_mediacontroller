@@ -1,0 +1,6 @@
+{
+	"webserver_port": 7777,
+	"renderer_name": "Test DLNA Renderer",
+	"renderer_url": "http://127.0.0.1:12345/AVTransport/action",
+	"mediaserver_url": "http://127.0.0.1:12346/MediaServer/ContentDirectory/Control"
+}
