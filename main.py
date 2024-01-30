@@ -3,6 +3,7 @@ import json
 
 from controller.integrator import Integrator
 from controller.webserver import WebServer
+from controller.appinfo import AppInfo
 
 logger = logging.getLogger(__file__)
 
@@ -29,9 +30,13 @@ def main():
     setup_logging()
 
     config = load_config()
+
+    info = AppInfo()
+    info.register('config', config)  # put full config into info
+
     logger.info("starting")
-    i = Integrator(config)
-    w = WebServer(i)
+    integrator = Integrator(config)
+    w = WebServer(config, integrator, info)
     w.run()
 
 

@@ -13,3 +13,10 @@ Has endpoints to control a dlna media renderer via REST-ful commands.
 It is somehow interconnected to these other projects of mine:
 - https://github.com/derHeinz/dlna (this project has a copy of this within it's own sources)
 - https://github.com/derHeinz/voicecommand (that uses this project's server)
+
+TODOs
+- [X] should allow cors
+- [Y] calling without a path yiels Hello, should yield The name of the app
+- [X] should have a /config path to see config
+- [X] should also observe "non-looping" playback, because it otherways thinks it's always running!
+- [X] play should return a "description" describing the current state (e.g. 'spiele Lieder von Queen')

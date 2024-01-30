@@ -81,7 +81,10 @@ class Integrator():
                 return
 
             if RUNNING_STATE.STOPPED == run_state:
-                self._play_next_track()
+                if self.state.loop:
+                    self._play_next_track()
+                else:
+                    self._end()
         except Exception as e:
             logger.info('error in loop_process', exc_info=e)
             # reset inner state
@@ -131,8 +134,7 @@ class Integrator():
             self._validate_state(s)
             self._initiate(s)
             logger.debug(f"current state {self.state.running} with count {self.state.played_count}")
-            if s.loop:
-                self.scheduler.start_job(self._loop_process)
+            self.scheduler.start_job(self._loop_process)
         except Exception as e:
             logger.info('error while playing', exc_info=e)
             # reset inner state
