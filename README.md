@@ -16,7 +16,7 @@ It is somehow interconnected to these other projects of mine:
 
 TODOs
 - [X] should allow cors
-- [Y] calling without a path yiels Hello, should yield The name of the app
-- [X] should have a /config path to see config
+- [X] calling without a path yiels Hello, should yield The name of the app
+- [X] has a /info endpoint to see config
 - [X] should also observe "non-looping" playback, because it otherways thinks it's always running!
 - [X] play should return a "description" describing the current state (e.g. 'spiele Lieder von Queen')

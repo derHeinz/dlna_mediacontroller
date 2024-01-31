@@ -104,6 +104,6 @@ class WebServer(Thread):
 
     def current_state(self):
         return self._make_response_and_add_cors(jsonify(self.integrator.state.view()), 200)
-    
+
     def info(self):
         return self.appinfo.get()
