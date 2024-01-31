@@ -63,8 +63,6 @@ class Integrator():
             self._end()
 
     def _initiate(self, s: State) -> StateView:
-        assert s.last_played_url is None
-
         self._end()
         self.state = s
 
@@ -130,8 +128,8 @@ class Integrator():
         s.artist = artist
         s.loop = loop
 
+        self._validate_state(s)
         try:
-            self._validate_state(s)
             self._initiate(s)
             logger.debug(f"current state {self.state.running} with count {self.state.played_count}")
             self.scheduler.start_job(self._loop_process)

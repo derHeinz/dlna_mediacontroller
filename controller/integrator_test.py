@@ -100,14 +100,12 @@ class TestIntegrator(unittest.TestCase):
         self.assertEqual(self.DEFAULT_RENDERER_URL, i.player.get_url())
         self.assertNotEqual(None, i.state)
 
-    @patch("controller.scheduler.Scheduler.stop_job")
-    def test_play_validation(self, stop_job_mock):
+    def test_play_validation(self):
         i = self._testee()
 
         with self.assertRaises(RequestInvalidException):
             i.play(None, None, None, False)
         self._assert_state(i.state, running=False)
-        stop_job_mock.assert_called_with()
 
     @patch("controller.integrator.Scheduler")
     @patch("controller.integrator.Player")

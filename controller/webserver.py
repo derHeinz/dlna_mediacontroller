@@ -9,6 +9,7 @@ from threading import Thread
 
 from controller.integrator import Integrator
 from controller.appinfo import AppInfo
+from controller.exceptions import RequestInvalidException
 
 logger = logging.getLogger(__file__)
 
@@ -91,7 +92,9 @@ class WebServer(Thread):
                 return self._make_response_and_add_cors("Kein passenden Titel gefunden", 404)
 
             return self._make_response_and_add_cors(jsonify(state), 200)
-
+        except RequestInvalidException as rie:
+            logger.info(rie)
+            return self._make_response_and_add_cors("Fehler", 400)
         except Exception as e:
             logger.error(e)
             return self._make_response_and_add_cors("Fehler", 500)  # might also be 4xx
