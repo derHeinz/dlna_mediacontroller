@@ -1,6 +1,7 @@
 from dataclasses import dataclass
+import datetime
 
-from dlna.mediaserver import SearchResponse, Item
+from dlna.mediaserver import Item
 
 
 @dataclass
@@ -10,6 +11,7 @@ class StateView():
     last_played_artist: str
     last_played_title: str
     running: bool
+    running_start_datetime: str
     played_count: int
     description: str
     stop_reason: str
@@ -25,6 +27,7 @@ class State():
 
     # reset current state
     running: bool
+    running_start_datetime: str
     search_response: any
     played_count: int
     description: str
@@ -46,6 +49,7 @@ class State():
 
         # reset current state
         self.running = False
+        self.running_start_datetime = None
         self.search_response = None
         self.played_count = 0
         self.description = "Aus"
@@ -88,6 +92,7 @@ class State():
 
     def now_playing(self, url, item):
         self.running = True
+        self.running_start_datetime = datetime.datetime.now().isoformat()
         self.played_count += 1
         self.last_played_url = url
         self.last_played_item = item
@@ -95,5 +100,5 @@ class State():
 
     def view(self):
         title, artist = self._title_and_artist()
-        return StateView(self.loop, self.last_played_url, artist, title, self.running,
+        return StateView(self.loop, self.last_played_url, artist, title, self.running, self.running_start_datetime,
                          self.played_count, self.description, self.stop_reason)
