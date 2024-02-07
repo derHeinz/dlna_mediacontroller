@@ -21,6 +21,6 @@ TODOs
 - [X] should also observe "non-looping" playback, because it otherways thinks it's always running!
 - [X] play should return a "description" describing the current state (e.g. 'spiele Lieder von Queen')
 - [X] /exit not working correctly, immediately broken
-- [ ] add started_timestamp to /state endpoint to see when the command was invoked
+- [X] add started_timestamp to /state endpoint to see when the command was invoked
 - [X] add exit reason for better understanding.
 - [ ] possibility to control 2 or more media renderers
