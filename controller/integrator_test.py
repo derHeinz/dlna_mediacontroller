@@ -52,7 +52,7 @@ class TestIntegrator(unittest.TestCase):
 
     def _assert_state(self, state: State, url=None, artist=None, title=None, loop=False, running=False,
                       last_played_url=None, last_played_artist=None, last_played_title=None, played_count=0,
-                      description="Aus"):
+                      description="Aus", stop_reason=None):
         # first check internal state
         self.assertEqual(url, state.url)
         self.assertEqual(artist, state.artist)
@@ -62,6 +62,7 @@ class TestIntegrator(unittest.TestCase):
         self.assertEqual(last_played_url, state.last_played_url)
         self.assertEqual(played_count, state.played_count)
         self.assertEqual(description, state.description)
+        self.assertEqual(stop_reason, state.stop_reason)
 
         # now check state's view
         view = state.view()
@@ -72,6 +73,7 @@ class TestIntegrator(unittest.TestCase):
         self.assertEqual(last_played_artist, view.last_played_artist)
         self.assertEqual(last_played_title, view.last_played_title)
         self.assertEqual(description, view.description)
+        self.assertEqual(stop_reason, view.stop_reason)
 
     def _initial_play_url(self, integrator: Integrator, loop=False):
         res = integrator.play(self.DEFAULT_URL, None, None, loop)
@@ -114,7 +116,7 @@ class TestIntegrator(unittest.TestCase):
 
         self._initial_play_url(i)
         res = i.pause()
-        self._assert_state(i.state, last_played_url=self.DEFAULT_URL, running=False)
+        self._assert_state(i.state, last_played_url=self.DEFAULT_URL, running=False, stop_reason="pause invoked")
         self.assertEqual(res, i.state.view())
 
         player_mock.assert_called()
@@ -127,7 +129,7 @@ class TestIntegrator(unittest.TestCase):
 
         self._initial_play_url(i)
         res = i.stop()
-        self._assert_state(i.state, last_played_url=self.DEFAULT_URL, running=False)
+        self._assert_state(i.state, last_played_url=self.DEFAULT_URL, running=False, stop_reason="stop invoked")
         self.assertEqual(res, i.state.view())
 
         player_mock.assert_called()
@@ -148,10 +150,10 @@ class TestIntegrator(unittest.TestCase):
     def test_play_loop_error(self, player_play_mock, scheduler_mock):
         i = self._testee()
 
-        player_play_mock.side_effect = OSError()
+        player_play_mock.side_effect = OSError("test-error")
         with self.assertRaises(OSError):
             i.play(self.DEFAULT_URL, None, None, True)
-        self._assert_state(i.state)
+        self._assert_state(i.state, stop_reason="exception in play: test-error")
         scheduler_instance_mock = scheduler_mock.return_value
         scheduler_instance_mock.stop_job.assert_has_calls([call()])
         scheduler_instance_mock.start_job.assert_not_called()
@@ -181,14 +183,14 @@ class TestIntegrator(unittest.TestCase):
         mediaserver_search_mock.return_value = MySearchResponse([])
 
         res = i.play(None, 'must go', None, False)
-        self._assert_state(i.state)
+        self._assert_state(i.state, stop_reason="nothing found in media server")
         self.assertEqual(res, i.state.view())
 
         mediaserver_search_mock.assert_called_with(title='must go', artist=None)
         stop_job_mock.assert_called_with()
         player_play_mock.assert_not_called()
 
-        self._assert_state(i.state)
+        self._assert_state(i.state, stop_reason="nothing found in media server")
 
     @patch("dlna.mediaserver.MediaServer.search")
     @patch("controller.integrator.Scheduler")
@@ -320,7 +322,7 @@ class TestIntegrator(unittest.TestCase):
         player_instance_mock.get_state.assert_has_calls([call()])
         scheduler_instance_mock.stop_job.assert_called_with()
         scheduler_instance_mock.start_job.assert_not_called()
-        self._assert_state(i.state, running=False, loop=False, last_played_url=self.DEFAULT_URL)
+        self._assert_state(i.state, running=False, loop=False, last_played_url=self.DEFAULT_URL, stop_reason="interrupted")
 
     @patch("controller.integrator.Scheduler")
     @patch("controller.integrator.Player")
@@ -340,7 +342,8 @@ class TestIntegrator(unittest.TestCase):
         player_instance_mock.get_state.assert_has_calls([call()])
         scheduler_instance_mock.stop_job.assert_called_with()
         scheduler_instance_mock.start_job.assert_not_called()
-        self._assert_state(i.state, running=False, loop=False, last_played_url=self.DEFAULT_URL, description="Aus")
+        self._assert_state(i.state, running=False, loop=False, last_played_url=self.DEFAULT_URL, description="Aus",
+                           stop_reason="interrupted")
 
     @patch("dlna.mediaserver.MediaServer.search")
     @patch("controller.integrator.Scheduler")
@@ -388,7 +391,7 @@ class TestIntegrator(unittest.TestCase):
         mediaserver_search_mock.return_value = MySearchResponse([])
 
         res = i.play(None, 'must go', None, False)
-        self._assert_state(i.state, running=False)
+        self._assert_state(i.state, running=False, stop_reason="nothing found in media server")
         self.assertEqual(res, i.state.view())
 
         player_instance_mock.play.assert_not_called()
@@ -435,10 +438,11 @@ class TestIntegrator(unittest.TestCase):
         scheduler_instance_mock = scheduler_mock.return_value
         player_mock.reset_mock()
         player_instance_mock = player_mock.return_value
-        player_instance_mock.get_state.side_effect = OSError()
+        player_instance_mock.get_state.side_effect = OSError("test-error")
 
         with self.assertRaises(OSError):
             i._loop_process()
         player_instance_mock.get_state.assert_has_calls([call()])
         scheduler_instance_mock.stop_job.assert_called_with()
-        self._assert_state(i.state, last_played_url='a-track', running=False, loop=False, description='Aus')
+        self._assert_state(i.state, last_played_url='a-track', running=False, loop=False, description='Aus',
+                           stop_reason="exception in looping: test-error")

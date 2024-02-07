@@ -12,6 +12,7 @@ class StateView():
     running: bool
     played_count: int
     description: str
+    stop_reason: str
 
 
 class State():
@@ -27,6 +28,7 @@ class State():
     search_response: any
     played_count: int
     description: str
+    stop_reason: str
 
     def __init__(self) -> None:
         self._initial_values()
@@ -47,9 +49,11 @@ class State():
         self.search_response = None
         self.played_count = 0
         self.description = "Aus"
+        self.stop_reason = None
 
-    def stop(self):
+    def stop(self, reason: str = None):
         self._initial_values()
+        self.stop_reason = reason
 
     def _title_and_artist(self):
         title = self.last_played_item.get_title() if self.last_played_item is not None else None
@@ -91,4 +95,5 @@ class State():
 
     def view(self):
         title, artist = self._title_and_artist()
-        return StateView(self.loop, self.last_played_url, artist, title, self.running, self.played_count, self.description)
+        return StateView(self.loop, self.last_played_url, artist, title, self.running,
+                         self.played_count, self.description, self.stop_reason)

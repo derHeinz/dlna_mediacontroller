@@ -60,10 +60,10 @@ class Integrator():
             logger.debug('setting now_playing')
             self.state.now_playing(url, item)
         else:
-            self._end()
+            self._end("nothing found in media server")
 
     def _initiate(self, s: State) -> StateView:
-        self._end()
+        self._end("initiate new track")
         self.state = s
 
         self._play_next_track()
@@ -72,7 +72,7 @@ class Integrator():
         try:
             run_state = self._check_running()
             if RUNNING_STATE.INTERRUPTED == run_state:
-                self._end()
+                self._end("interrupted")
                 return
 
             if RUNNING_STATE.RUNNING == run_state:
@@ -82,17 +82,17 @@ class Integrator():
                 if self.state.loop:
                     self._play_next_track()
                 else:
-                    self._end()
+                    self._end("not looping")
         except Exception as e:
             logger.info('error in loop_process', exc_info=e)
             # reset inner state
-            self._end()
+            self._end("exception in looping: " + str(e))
             raise e
 
-    def _end(self):
+    def _end(self, reason: str):
         logger.debug('ending integrator')
         self.scheduler.stop_job()
-        self.state.stop()
+        self.state.stop(reason)
 
     def _check_running(self) -> RUNNING_STATE:
         player_state = self.player.get_state()
@@ -136,29 +136,29 @@ class Integrator():
         except Exception as e:
             logger.info('error while playing', exc_info=e)
             # reset inner state
-            self._end()
+            self._end("exception in play: " + str(e))
             raise e
         return self.state.view()
 
     def pause(self) -> StateView:
         logger.debug('pause called')
-        self._end()
+        self._end("pause invoked")
         try:
             self.player.pause()
         except Exception as e:
             # reset inner state
-            self._end()
+            self._end("exception in puase: " + str(e))
             raise e
         return self.state.view()
 
     def stop(self) -> StateView:
         logger.debug('stop called')
-        self._end()
+        self._end("stop invoked")
         try:
             self.player.stop()
         except Exception as e:
             # reset inner state
-            self._end()
+            self._end("exception in stop: " + str(e))
             raise e
         return self.state.view()
 

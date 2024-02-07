@@ -75,7 +75,7 @@ class WebServer(Thread):
         thread = Thread(target=self._exit_program)
         thread.start()
 
-        return self._make_response_and_add_cors("shutdown hereafter")
+        return self._make_response_and_add_cors("shutdown hereafter", 200)
 
     def play(self):
         json = request.json
