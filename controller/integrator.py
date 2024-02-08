@@ -147,7 +147,7 @@ class Integrator():
             self.player.pause()
         except Exception as e:
             # reset inner state
-            self._end("exception in puase: " + str(e))
+            self._end("exception in pause: " + str(e))
             raise e
         return self.state.view()
 

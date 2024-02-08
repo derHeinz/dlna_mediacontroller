@@ -102,6 +102,11 @@ class TestIntegrator(unittest.TestCase):
         self.assertEqual(self.DEFAULT_RENDERER_URL, i.player.get_url())
         self.assertNotEqual(None, i.state)
 
+    def test_get_state(self):
+        i = self._testee()
+
+        self.assertEqual(i.state.view(), i.get_state())
+
     def test_play_validation(self):
         i = self._testee()
 
@@ -123,6 +128,19 @@ class TestIntegrator(unittest.TestCase):
         scheduler_mock.assert_called()
 
     @patch("controller.integrator.Scheduler")
+    @patch("dlna.player.Player.pause")
+    def test_pause_error(self, player_pause_mock, scheduler_mock):
+        i = self._testee()
+
+        player_pause_mock.side_effect = OSError("test-error")
+        with self.assertRaises(OSError):
+            i.pause()
+        self._assert_state(i.state, stop_reason="exception in pause: test-error")
+        scheduler_instance_mock = scheduler_mock.return_value
+        scheduler_instance_mock.stop_job.assert_has_calls([call()])
+        scheduler_instance_mock.start_job.assert_not_called()
+
+    @patch("controller.integrator.Scheduler")
     @patch("controller.integrator.Player")
     def test_stop(self, player_mock, scheduler_mock):
         i = self._testee()
@@ -134,6 +152,19 @@ class TestIntegrator(unittest.TestCase):
 
         player_mock.assert_called()
         scheduler_mock.assert_called()
+
+    @patch("controller.integrator.Scheduler")
+    @patch("dlna.player.Player.stop")
+    def test_stop_error(self, player_stop_mock, scheduler_mock):
+        i = self._testee()
+
+        player_stop_mock.side_effect = OSError("test-error")
+        with self.assertRaises(OSError):
+            i.stop()
+        self._assert_state(i.state, stop_reason="exception in stop: test-error")
+        scheduler_instance_mock = scheduler_mock.return_value
+        scheduler_instance_mock.stop_job.assert_has_calls([call()])
+        scheduler_instance_mock.start_job.assert_not_called()
 
     @patch("controller.scheduler.Scheduler.stop_job")
     @patch("dlna.player.Player.play")
@@ -235,6 +266,30 @@ class TestIntegrator(unittest.TestCase):
         scheduler_instance_mock.stop_job.assert_called()
         scheduler_instance_mock.start_job.assert_called()
         player_play_mock.assert_called_with('url-liquido', item=testItem)
+
+    @patch("controller.integrator.Scheduler")
+    @patch("controller.integrator.Player")
+    def test_play_url_with_loops_not_looping(self, player_mock, scheduler_mock):
+        i = self._testee()
+
+        self._initial_play_url(i)
+        scheduler_mock.assert_has_calls([call(),  # constructor call
+                                         call().start(),
+                                         call().stop_job(),
+                                         call().start_job(i._loop_process)  # make sure loop_process has been called
+                                         ])
+        player_mock.assert_has_calls([  # constructor call omitted
+                                      call().play('a-track')])
+
+        # first loop, still playing
+        scheduler_mock.reset_mock()
+        player_mock.reset_mock()
+        player_instance_mock = player_mock.return_value
+        player_instance_mock.get_state.return_value = PlayerState(TRANSPORT_STATE.STOPPED, 'a-track')
+
+        i._loop_process()
+        player_instance_mock.get_state.assert_has_calls([call()])
+        self._assert_state(i.state, last_played_url='a-track', running=False, description="Aus", stop_reason="not looping")
 
     @patch("controller.integrator.Scheduler")
     @patch("controller.integrator.Player")
