@@ -92,7 +92,8 @@ class State():
 
     def now_playing(self, url, item):
         self.running = True
-        self.running_start_datetime = datetime.datetime.now().isoformat()
+        if self.running_start_datetime is None:
+            self.running_start_datetime = datetime.datetime.now().isoformat()
         self.played_count += 1
         self.last_played_url = url
         self.last_played_item = item
