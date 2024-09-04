@@ -11,22 +11,32 @@ class Item():
 
     def get_title(self):
         e = self._element.find('dc:title', {'dc': NAMESPACE_DC})
+        if e is None:
+            return None
         return e.text
 
     def get_actor(self):
         e = self._element.find('upnp:actor', {'upnp': NAMESPACE_UPNP})
+        if e is None:
+            return None
         return e.text
 
     def get_creator(self):
         e = self._element.find('dc:creator', {'dc': NAMESPACE_DC})
+        if e is None:
+            return None
         return e.text
 
     def get_url(self):
         e = self._element.find('d:res', {'d': NAMESPACE_DIDL})
+        if e is None:
+            return None
         return e.text
 
     def get_res(self):
         e = self._element.find('d:res', {'d': NAMESPACE_DIDL})
+        if e is None:
+            return None
         return e
 
     def get_res_as_string(self):

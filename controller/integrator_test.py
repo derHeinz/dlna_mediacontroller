@@ -5,7 +5,7 @@ import random
 
 from controller.exceptions import RequestInvalidException
 from dlna.player import State as PlayerState, TRANSPORT_STATE
-from controller.state import State, StateView
+from controller.state import State
 from controller.integrator import Integrator
 
 
