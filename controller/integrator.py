@@ -91,6 +91,7 @@ class Integrator():
 
     def _end(self, reason: str):
         logger.debug('ending integrator')
+        print(f"ending due to {reason}")
         self.scheduler.stop_job()
         self.state.stop(reason)
 
