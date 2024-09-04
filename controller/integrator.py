@@ -101,17 +101,23 @@ class Integrator():
         track_URI = player_state.current_url
 
         if transport_state is TRANSPORT_STATE.NO_MEDIA_PRESENT:
-            logger.info('Found shutdown of renderer')
+            #logger.info
+            print('Found shutdown of renderer')
             return RUNNING_STATE.INTERRUPTED
 
         if self.state.last_played_url != track_URI:
-            logger.info('Found renderer plays different track')
+            #logger.info
+            print('Found renderer plays different track')
             return RUNNING_STATE.INTERRUPTED
 
         # we know it's our track
         if transport_state is TRANSPORT_STATE.STOPPED:
+            #logger.info
+            print('Found renderer stopped')
             return RUNNING_STATE.STOPPED
         if transport_state is TRANSPORT_STATE.PLAYING:
+            #logger.info
+            print('Found renderer still running')
             return RUNNING_STATE.RUNNING
 
     def _validate_state(self, s: State):
