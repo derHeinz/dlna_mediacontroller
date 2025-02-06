@@ -78,12 +78,13 @@ class WebServer(Thread):
         return self._make_response_and_add_cors("shutdown hereafter", 200)
 
     def play(self):
-        json = request.json
+        logger.debug("in play")
+        content = request.json
 
-        url = json.get('url', None)
-        title = json.get('title', None)
-        artist = json.get('artist', None)
-        loop = json.get('loop', False)
+        url = content.get('url', None)
+        title = content.get('title', None)
+        artist = content.get('artist', None)
+        loop = content.get('loop', False)
         logger.debug(f"extracted all information url:{url}, title:{title}, artist:{artist}, loop:{loop} ")
 
         try:

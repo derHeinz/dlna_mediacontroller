@@ -1,15 +1,41 @@
-class Renderer():
+from enum import Enum
 
-    def __init__(self, name, control_url, with_metadata=False):
+CAPABILITIES = Enum('Capabilities', ['audio', 'video'])
+
+
+class Renderer():
+    '''Holder for meta-information about a device capable of playing DLNA/UPNP'''
+
+    def __init__(self, name, aliases, url, mac, capabilities, send_metadata):
         self._name = name
-        self._control_url = control_url
-        self._with_metadata = with_metadata
+        self._aliases = aliases
+        self._control_url = url
+        self._mac = mac
+        self._capabilities = capabilities
+        self._send_metadata = send_metadata
 
     def get_name(self):
         return self._name
 
     def include_metadata(self):
-        return self._with_metadata
+        return self._send_metadata
 
     def get_url(self):
         return self._control_url
+
+    def get_known_names(self):
+        res = []
+        res.append(self._name)
+        if self._aliases and len(self._aliases):
+            for a in self._aliases:
+                res.append(a)
+
+    def can_play_video(self):
+        if self._capabilities and 'video' in self._capabilities:
+            return True
+        return False
+
+    def can_play_audio(self):
+        if self._capabilities and 'audio' in self._capabilities:
+            return True
+        return False

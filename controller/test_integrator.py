@@ -37,18 +37,36 @@ class MySearchResponse():
         return random.choice(self.items)
 
 
+class FakeRenderer:
+
+    def __init__(self, name):
+        self._name = name
+
+
+class FakeServer:
+
+    def __init__(self, name):
+        self._name = name
+
+    def search(self):
+        pass
+
+
 class TestIntegrator(unittest.TestCase):
 
     DEFAULT_URL = 'a-track'
-    DEFAULT_RENDERER_URL = 'asdf'
-    DEFAULT_RENDERER_NAME = 'Test'
+
+    FAKE_RENDERER_A = FakeRenderer('A')
+    FAKE_RENDERER_B = FakeRenderer('B')
+
+    FAKE_SERVER = FakeServer('F')
+
     DEFAULT_MEDIASERVER_URL = 'qwertz'
     DEFAULT_ITEM = MyItem('Show must go on', 'Queen', 'url-queen')
     DEFAULT_RESPONSE = MySearchResponse([DEFAULT_ITEM])
 
     def _testee(self):
-        return Integrator({'renderer_name': self.DEFAULT_RENDERER_NAME,
-                           'renderer_url': self.DEFAULT_RENDERER_URL, 'server_url': self.DEFAULT_MEDIASERVER_URL})
+        return Integrator([self.FAKE_RENDERER_A, self.FAKE_RENDERER_B], self.FAKE_SERVER)
 
     def _assert_state(self, state: State, url=None, artist=None, title=None, loop=False, running=False,
                       last_played_url=None, last_played_artist=None, last_played_title=None, played_count=0,
@@ -98,9 +116,13 @@ class TestIntegrator(unittest.TestCase):
         self._assert_state(i.state)
 
         start_scheduler_mock.assert_called()
-        self.assertEqual(self.DEFAULT_RENDERER_NAME, i.player_name)
-        self.assertEqual(self.DEFAULT_RENDERER_URL, i.player.get_url())
+        self.assertEqual(self.FAKE_RENDERER_A, i._players[0]._renderer)
+        self.assertEqual(self.FAKE_RENDERER_B, i._players[1]._renderer)
         self.assertNotEqual(None, i.state)
+
+    def test_default_player(self):
+        i = self._testee()
+        self.assertEqual(self.FAKE_RENDERER_A, i._default_player()._renderer)
 
     def test_get_state(self):
         i = self._testee()
@@ -189,7 +211,7 @@ class TestIntegrator(unittest.TestCase):
         scheduler_instance_mock.stop_job.assert_has_calls([call()])
         scheduler_instance_mock.start_job.assert_not_called()
 
-    @patch("dlna.mediaserver.MediaServer.search")
+    @patch("controller.test_integrator.FakeServer.search")
     @patch("controller.scheduler.Scheduler.stop_job")
     @patch("dlna.player.Player.play")
     def test_play_item_initial(self, player_play_mock, stop_job_mock, mediaserver_search_mock):
@@ -204,7 +226,7 @@ class TestIntegrator(unittest.TestCase):
         stop_job_mock.assert_called_with()
         player_play_mock.assert_called_with(self.DEFAULT_ITEM.url, item=self.DEFAULT_ITEM)
 
-    @patch("dlna.mediaserver.MediaServer.search")
+    @patch("controller.test_integrator.FakeServer.search")
     @patch("controller.scheduler.Scheduler.stop_job")
     @patch("dlna.player.Player.play")
     def test_play_item_not_found(self, player_play_mock, stop_job_mock, mediaserver_search_mock):
@@ -223,7 +245,7 @@ class TestIntegrator(unittest.TestCase):
 
         self._assert_state(i.state, stop_reason="nothing found in media server")
 
-    @patch("dlna.mediaserver.MediaServer.search")
+    @patch("controller.test_integrator.FakeServer.search")
     @patch("controller.integrator.Scheduler")
     @patch("dlna.player.Player.play")
     def test_play_item_second(self, player_play_mock, scheduler_mock, mediaserver_search_mock):
@@ -329,7 +351,7 @@ class TestIntegrator(unittest.TestCase):
         self._assert_state(i.state, url='a-track', last_played_url='a-track', running=True, played_count=2, loop=True,
                            description="Wiederholt a-track")
 
-    @patch("dlna.mediaserver.MediaServer.search")
+    @patch("controller.test_integrator.FakeServer.search")
     @patch("controller.integrator.Scheduler")
     @patch("controller.integrator.Player")
     def test_play_item_with_loops(self, player_mock, scheduler_mock, mediaserver_search_mock):
@@ -400,7 +422,7 @@ class TestIntegrator(unittest.TestCase):
         self._assert_state(i.state, running=False, loop=False, last_played_url=self.DEFAULT_URL, description="Aus",
                            stop_reason="interrupted")
 
-    @patch("dlna.mediaserver.MediaServer.search")
+    @patch("controller.test_integrator.FakeServer.search")
     @patch("controller.integrator.Scheduler")
     @patch("controller.integrator.Player")
     def test_play_url_after_item(self, player_mock, scheduler_mock, mediaserver_search_mock):
@@ -427,7 +449,7 @@ class TestIntegrator(unittest.TestCase):
         scheduler_instance_mock.stop_job.assert_has_calls([call()])
         mediaserver_search_mock.assert_not_called()
 
-    @patch("dlna.mediaserver.MediaServer.search")
+    @patch("controller.test_integrator.FakeServer.search")
     @patch("controller.integrator.Scheduler")
     @patch("controller.integrator.Player")
     def test_play_item_not_found_after_item(self, player_mock, scheduler_mock, mediaserver_search_mock):
@@ -454,7 +476,7 @@ class TestIntegrator(unittest.TestCase):
         scheduler_instance_mock.start_job.assert_called()
         mediaserver_search_mock.assert_called_with(title='must go', artist=None)
 
-    @patch("dlna.mediaserver.MediaServer.search")
+    @patch("controller.test_integrator.FakeServer.search")
     @patch("controller.integrator.Scheduler")
     @patch("controller.integrator.Player")
     def test_play_url_noloop_after_item_loop(self, player_mock, scheduler_mock, mediaserver_search_mock):
