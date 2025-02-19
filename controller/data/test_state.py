@@ -1,8 +1,8 @@
-from controller.state import State
+from controller.data.state import State
 import unittest
 
 
-class TestIntegrator(unittest.TestCase):
+class TestState(unittest.TestCase):
 
     def _testee(self) -> State:
         return State()

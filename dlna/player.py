@@ -1,13 +1,17 @@
 import uuid
+import logging
 import xml.etree.ElementTree as ET
 from enum import Enum
 from dataclasses import dataclass
+from time import sleep
 
-
+from dlna.renderer import Renderer
 from dlna.dlna_helper import XML_HEADER, create_header, send_request
 
 TRANSPORT_STATE = Enum('TransportState', ['STOPPED', 'PLAYING', 'TRANSITIONING', 'PAUSED_PLAYBACK',
                                           'RECORDING', 'PAUSED_RECORDING', 'NO_MEDIA_PRESENT'])
+
+logger = logging.getLogger(__file__)
 
 
 @dataclass
@@ -57,8 +61,16 @@ class Player():
     # should get the variabl: url and metadata
     PREPARE_NEXT_BODY = '<?xml version="1.0" encoding="utf-8" standalone="yes"?>\n<s:Envelope s:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/" xmlns:s="http://schemas.xmlsoap.org/soap/envelope/"><s:Body><u:SetAVTransportURI xmlns:u="urn:schemas-upnp-org:service:AVTransport:1"><InstanceID>0</InstanceID><NextURI>{url}</NextURI><NextURIMetaData>{metadata}</NextURIMetaData></u:SetAVTransportURI></s:Body></s:Envelope>'
 
-    def __init__(self, renderer):
-        self._renderer = renderer
+    def __init__(self, renderer: Renderer):
+        self._renderer:Renderer = renderer
+
+    # external methods
+
+    def get_renderer(self):
+        return self._renderer
+    
+    def get_name(self):
+        return self._renderer.get_name()
 
     def stop(self):
         body = self.STOP_BODY
@@ -84,9 +96,25 @@ class Player():
         prepare_body = self.PREPARE_BODY.format(url=url_to_play, metadata=encoded_meta)
         self._send_request('SetAVTransportURI', prepare_body)
 
+        # see spec 2.4.9.2, we must wait until one of these states
+        self._wait_for_transport_state([TRANSPORT_STATE.STOPPED, TRANSPORT_STATE.PLAYING, TRANSPORT_STATE.PAUSED_PLAYBACK])
+
         # play SOAP message
         play_body = self.PLAY_BODY
         return self._send_request('Play', play_body)
+
+    def get_state(self) -> State:
+        position_info = self._position_info()
+        transport_info = self._transport_info()
+
+        transport_state = transport_info.get('CurrentTransportState', None)
+        track_URI = position_info.get('TrackURI', None)
+
+        logger.debug(f"current transport_state: {transport_state} and track: {track_URI}")
+
+        return State(TRANSPORT_STATE[transport_state], track_URI)
+    
+    # internal methods
 
     def _escape(self, str):
         str = str.replace("&", "&amp;")
@@ -99,16 +127,7 @@ class Player():
         result = " ".join(result.split())
         return result
 
-    def get_state(self) -> State:
-        position_info = self.position_info()
-        transport_info = self.transport_info()
-
-        transport_state = transport_info.get('CurrentTransportState', None)
-        track_URI = position_info.get('TrackURI', None)
-
-        return State(TRANSPORT_STATE[transport_state], track_URI)
-
-    def position_info(self):
+    def _position_info(self):
         response = self._send_request('GetPositionInfo', self.POS_INFO_BODY)
         xml_content = ET.fromstring(response.read().decode('utf-8'))
         getPositionInfoResponse = xml_content.find(".//{urn:schemas-upnp-org:service:AVTransport:1}GetPositionInfoResponse")
@@ -119,7 +138,7 @@ class Player():
 
         return result
 
-    def transport_info(self):
+    def _transport_info(self):
         response = self._send_request('GetTransportInfo', self.TRANS_INFO_BODY)
         xml_content = ET.fromstring(response.read().decode('utf-8'))
         getPositionInfoResponse = xml_content.find(".//{urn:schemas-upnp-org:service:AVTransport:1}GetTransportInfoResponse")
@@ -129,11 +148,22 @@ class Player():
             result[child.tag] = child.text
 
         return result
+    
+    def _wait_for_transport_state(self, expected_transport_states: list[TRANSPORT_STATE]):
+        logger.debug(f"waiting for state {','.join(map(str, expected_transport_states))}")
+        for i in range(20):
+            transport_info = self._transport_info()
+            current_transport_state = transport_info.get('CurrentTransportState', None)
+            if TRANSPORT_STATE[current_transport_state] in expected_transport_states:
+                logger.debug(f"state {current_transport_state} arrived.")
+                return True
+            sleep(0.1)  # wait for 100ms until another try
+
+        return False
 
     def _send_request(self, header_keyword, body):
         device_url = self._renderer.get_url()
         header = create_header('AVTransport', header_keyword)
         return send_request(device_url, header, body)
 
-    def get_url(self):
-        return self._renderer.get_url()
+    

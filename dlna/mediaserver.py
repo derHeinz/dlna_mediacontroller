@@ -3,7 +3,8 @@ import random
 
 from dlna.dlna_helper import XML_HEADER, NAMESPACE_DIDL, NAMESPACE_DC, NAMESPACE_UPNP, create_header, send_request, namespace_free_res_element
 
-
+# TODO extract item
+# TODO str(item) should yield something nice
 class Item():
 
     def __init__(self, item_element):

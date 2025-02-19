@@ -3,9 +3,10 @@ from unittest.mock import patch, call
 from dataclasses import dataclass
 import random
 
-from controller.exceptions import RequestInvalidException
+from controller.data.exceptions import RequestInvalidException
+from controller.scheduler import Scheduler
 from dlna.player import State as PlayerState, TRANSPORT_STATE
-from controller.state import State
+from controller.data.state import State
 from controller.integrator import Integrator
 
 
@@ -37,10 +38,25 @@ class MySearchResponse():
         return random.choice(self.items)
 
 
-class FakeRenderer:
+class FakePlayer:
 
     def __init__(self, name):
         self._name = name
+
+    def get_name(self):
+        return self._name
+
+    def stop(self):
+        pass
+
+    def pause(self):
+        pass
+
+    def play(self, url):
+        pass
+
+    def get_state(self):
+        pass
 
 
 class FakeServer:
@@ -55,18 +71,20 @@ class FakeServer:
 class TestIntegrator(unittest.TestCase):
 
     DEFAULT_URL = 'a-track'
+    DEFAULT_PLAYER_NAME = 'TestPlayer'
 
-    FAKE_RENDERER_A = FakeRenderer('A')
-    FAKE_RENDERER_B = FakeRenderer('B')
-
+    FAKE_PLAYER = FakePlayer(DEFAULT_PLAYER_NAME)
     FAKE_SERVER = FakeServer('F')
 
     DEFAULT_MEDIASERVER_URL = 'qwertz'
     DEFAULT_ITEM = MyItem('Show must go on', 'Queen', 'url-queen')
     DEFAULT_RESPONSE = MySearchResponse([DEFAULT_ITEM])
 
+    SCHEDULER = Scheduler()
+
     def _testee(self):
-        return Integrator([self.FAKE_RENDERER_A, self.FAKE_RENDERER_B], self.FAKE_SERVER)
+        self.SCHEDULER.start()
+        return Integrator(self.FAKE_PLAYER, self.FAKE_SERVER, self.SCHEDULER)
 
     def _assert_state(self, state: State, url=None, artist=None, title=None, loop=False, running=False,
                       last_played_url=None, last_played_artist=None, last_played_title=None, played_count=0,
@@ -96,100 +114,86 @@ class TestIntegrator(unittest.TestCase):
     def _initial_play_url(self, integrator: Integrator, loop=False):
         res = integrator.play(self.DEFAULT_URL, None, None, loop)
         dsc = "Wiederholt " + self.DEFAULT_URL if loop else "Spielt " + self.DEFAULT_URL
-        self._assert_state(integrator.state, url=self.DEFAULT_URL, last_played_url=self.DEFAULT_URL,
+        self._assert_state(integrator._state, url=self.DEFAULT_URL, last_played_url=self.DEFAULT_URL,
                            running=True, played_count=1, description=dsc, loop=loop)
         return res
 
     def _initial_play_item(self, integrator: Integrator, loop=False):  # TOOD add parameter loop!
         res = integrator.play(None, 'must go', None, loop)
         desc = "Spielt " + ("Lieder mit 'must go'" if loop else self.DEFAULT_ITEM.title + " von " + self.DEFAULT_ITEM.actor)
-        self._assert_state(integrator.state, title='must go', last_played_url=self.DEFAULT_ITEM.url, loop=loop,
+        self._assert_state(integrator._state, title='must go', last_played_url=self.DEFAULT_ITEM.url, loop=loop,
                            last_played_artist=self.DEFAULT_ITEM.actor, last_played_title=self.DEFAULT_ITEM.title,
                            running=True, played_count=1, description=desc)
-        self.assertEqual(res, integrator.state.view())
+        self.assertEqual(res, integrator._state.view())
         return res
 
     @patch("controller.scheduler.Scheduler.start")
     def test_constructor(self, start_scheduler_mock):
         i = self._testee()
 
-        self._assert_state(i.state)
+        self._assert_state(i._state)
 
         start_scheduler_mock.assert_called()
-        self.assertEqual(self.FAKE_RENDERER_A, i._players[0]._renderer)
-        self.assertEqual(self.FAKE_RENDERER_B, i._players[1]._renderer)
-        self.assertNotEqual(None, i.state)
-
-    def test_default_player(self):
-        i = self._testee()
-        self.assertEqual(self.FAKE_RENDERER_A, i._default_player()._renderer)
+        self.assertEqual(self.FAKE_PLAYER, i._player)
+        self.assertEqual(self.FAKE_SERVER, i._media_server)
+        self.assertNotEqual(None, i._state)
 
     def test_get_state(self):
         i = self._testee()
 
-        self.assertEqual(i.state.view(), i.get_state())
+        self.assertEqual(i._state.view(), i.get_state())
 
     def test_play_validation(self):
         i = self._testee()
 
         with self.assertRaises(RequestInvalidException):
             i.play(None, None, None, False)
-        self._assert_state(i.state, running=False)
+        self._assert_state(i._state, running=False)
 
-    @patch("controller.integrator.Scheduler")
-    @patch("controller.integrator.Player")
-    def test_pause(self, player_mock, scheduler_mock):
+    def test_pause(self):
         i = self._testee()
 
         self._initial_play_url(i)
         res = i.pause()
-        self._assert_state(i.state, last_played_url=self.DEFAULT_URL, running=False, stop_reason="pause invoked")
-        self.assertEqual(res, i.state.view())
+        self._assert_state(i._state, last_played_url=self.DEFAULT_URL, running=False, stop_reason="pause invoked")
+        self.assertEqual(res, i._state.view())
 
-        player_mock.assert_called()
-        scheduler_mock.assert_called()
-
-    @patch("controller.integrator.Scheduler")
-    @patch("dlna.player.Player.pause")
-    def test_pause_error(self, player_pause_mock, scheduler_mock):
+    @patch("controller.integrator.Scheduler.stop_job")
+    @patch("controller.integrator.Scheduler.start_job")
+    @patch("controller.test_integrator.FakePlayer.pause")
+    def test_pause_error(self, player_pause_mock, scheduler_start_mock, scheduler_stop_mock):
         i = self._testee()
 
         player_pause_mock.side_effect = OSError("test-error")
         with self.assertRaises(OSError):
             i.pause()
-        self._assert_state(i.state, stop_reason="exception in pause: test-error")
-        scheduler_instance_mock = scheduler_mock.return_value
-        scheduler_instance_mock.stop_job.assert_has_calls([call()])
-        scheduler_instance_mock.start_job.assert_not_called()
+        self._assert_state(i._state, stop_reason="exception in pause: test-error")
+        scheduler_stop_mock.assert_has_calls([call(self.DEFAULT_PLAYER_NAME)])
+        scheduler_start_mock.assert_not_called()
 
-    @patch("controller.integrator.Scheduler")
-    @patch("controller.integrator.Player")
-    def test_stop(self, player_mock, scheduler_mock):
+    def test_stop(self):
         i = self._testee()
 
         self._initial_play_url(i)
         res = i.stop()
-        self._assert_state(i.state, last_played_url=self.DEFAULT_URL, running=False, stop_reason="stop invoked")
-        self.assertEqual(res, i.state.view())
+        self._assert_state(i._state, last_played_url=self.DEFAULT_URL, running=False, stop_reason="stop invoked")
+        self.assertEqual(res, i._state.view())
 
-        player_mock.assert_called()
-        scheduler_mock.assert_called()
-
-    @patch("controller.integrator.Scheduler")
-    @patch("dlna.player.Player.stop")
-    def test_stop_error(self, player_stop_mock, scheduler_mock):
+    @patch("controller.integrator.Scheduler.stop_job")
+    @patch("controller.integrator.Scheduler.start_job")
+    @patch("controller.test_integrator.FakePlayer.stop")
+    def test_stop_error(self, player_stop_mock, scheduler_start_mock, scheduler_stop_mock):
         i = self._testee()
 
         player_stop_mock.side_effect = OSError("test-error")
         with self.assertRaises(OSError):
             i.stop()
-        self._assert_state(i.state, stop_reason="exception in stop: test-error")
-        scheduler_instance_mock = scheduler_mock.return_value
-        scheduler_instance_mock.stop_job.assert_has_calls([call()])
-        scheduler_instance_mock.start_job.assert_not_called()
+        self._assert_state(i._state, stop_reason="exception in stop: test-error")
+        scheduler_stop_mock.assert_has_calls([call(self.DEFAULT_PLAYER_NAME)])
+        scheduler_start_mock.assert_not_called()
 
     @patch("controller.scheduler.Scheduler.stop_job")
-    @patch("dlna.player.Player.play")
+    @patch("controller.test_integrator.FakePlayer.play")
     def test_play_url_initial(self, player_play_mock, stop_job_mock):
         i = self._testee()
 
@@ -198,22 +202,22 @@ class TestIntegrator(unittest.TestCase):
         stop_job_mock.assert_called()
         player_play_mock.assert_called_with('a-track')
 
-    @patch("controller.integrator.Scheduler")
-    @patch("dlna.player.Player.play")
-    def test_play_loop_error(self, player_play_mock, scheduler_mock):
+    @patch("controller.integrator.Scheduler.stop_job")
+    @patch("controller.integrator.Scheduler.start_job")
+    @patch("controller.test_integrator.FakePlayer.play")
+    def test_play_loop_error(self, player_play_mock, scheduler_start_mock, scheduler_stop_mock):
         i = self._testee()
 
         player_play_mock.side_effect = OSError("test-error")
         with self.assertRaises(OSError):
             i.play(self.DEFAULT_URL, None, None, True)
-        self._assert_state(i.state, stop_reason="exception in play: test-error")
-        scheduler_instance_mock = scheduler_mock.return_value
-        scheduler_instance_mock.stop_job.assert_has_calls([call()])
-        scheduler_instance_mock.start_job.assert_not_called()
+        self._assert_state(i._state, stop_reason="exception in play: test-error")
+        scheduler_stop_mock.assert_has_calls([call(self.DEFAULT_PLAYER_NAME)])
+        scheduler_start_mock.assert_not_called()
 
     @patch("controller.test_integrator.FakeServer.search")
     @patch("controller.scheduler.Scheduler.stop_job")
-    @patch("dlna.player.Player.play")
+    @patch("controller.test_integrator.FakePlayer.play")
     def test_play_item_initial(self, player_play_mock, stop_job_mock, mediaserver_search_mock):
         i = self._testee()
 
@@ -223,12 +227,12 @@ class TestIntegrator(unittest.TestCase):
         self._initial_play_item(i)
 
         mediaserver_search_mock.assert_called_with(title='must go', artist=None)
-        stop_job_mock.assert_called_with()
+        stop_job_mock.assert_called_with(self.DEFAULT_PLAYER_NAME)
         player_play_mock.assert_called_with(self.DEFAULT_ITEM.url, item=self.DEFAULT_ITEM)
 
     @patch("controller.test_integrator.FakeServer.search")
     @patch("controller.scheduler.Scheduler.stop_job")
-    @patch("dlna.player.Player.play")
+    @patch("controller.test_integrator.FakePlayer.play")
     def test_play_item_not_found(self, player_play_mock, stop_job_mock, mediaserver_search_mock):
         i = self._testee()
 
@@ -236,125 +240,114 @@ class TestIntegrator(unittest.TestCase):
         mediaserver_search_mock.return_value = MySearchResponse([])
 
         res = i.play(None, 'must go', None, False)
-        self._assert_state(i.state, stop_reason="nothing found in media server")
-        self.assertEqual(res, i.state.view())
+        self._assert_state(i._state, stop_reason="nothing found in media server")
+        self.assertEqual(res, i._state.view())
 
         mediaserver_search_mock.assert_called_with(title='must go', artist=None)
-        stop_job_mock.assert_called_with()
+        stop_job_mock.assert_called_with(self.DEFAULT_PLAYER_NAME)
         player_play_mock.assert_not_called()
 
-        self._assert_state(i.state, stop_reason="nothing found in media server")
+        self._assert_state(i._state, stop_reason="nothing found in media server")
 
     @patch("controller.test_integrator.FakeServer.search")
-    @patch("controller.integrator.Scheduler")
-    @patch("dlna.player.Player.play")
-    def test_play_item_second(self, player_play_mock, scheduler_mock, mediaserver_search_mock):
+    @patch("controller.integrator.Scheduler.stop_job")
+    @patch("controller.integrator.Scheduler.start_job")
+    @patch("controller.test_integrator.FakePlayer.play")
+    def test_play_item_second(self, player_play_mock, scheduler_start_mock, scheduler_stop_mock, mediaserver_search_mock):
         i = self._testee()
-
-        scheduler_instance_mock = scheduler_mock.return_value
 
         # prepare mediaserver_mock for first call
         testItem = MyItem('Show must go on', 'Queen', 'url-queen')
         mediaserver_search_mock.return_value = MySearchResponse([testItem])
 
         res = i.play(None, 'must go', None, False)
-        self.assertEqual(res, i.state.view())
-        self._assert_state(i.state, title='must go', last_played_url='url-queen',
+        self.assertEqual(res, i._state.view())
+        self._assert_state(i._state, title='must go', last_played_url='url-queen',
                            last_played_artist='Queen', last_played_title='Show must go on',
                            running=True, played_count=1,
                            description="Spielt Show must go on von Queen")
-        self.assertEqual(testItem, i.state.last_played_item)
+        self.assertEqual(testItem, i._state.last_played_item)
 
         mediaserver_search_mock.assert_called_with(title='must go', artist=None)
-        scheduler_instance_mock.stop_job.assert_called()
-        scheduler_instance_mock.start_job.assert_called()
+        scheduler_stop_mock.assert_called()
+        scheduler_start_mock.assert_called()
         player_play_mock.assert_called_with('url-queen', item=testItem)
 
         # prepare mocks for second call
         player_play_mock.reset_mock()
-        scheduler_mock.reset_mock()
+        scheduler_start_mock.reset_mock()
+        scheduler_stop_mock.reset_mock()
         mediaserver_search_mock.reset_mock()
         testItem = MyItem('Narcotic', 'Liquido', 'url-liquido')
         mediaserver_search_mock.return_value = MySearchResponse([testItem])
 
         res = i.play(None, 'narco', None, False)
-        self._assert_state(i.state, title='narco', last_played_url='url-liquido', running=True, played_count=1,
+        self._assert_state(i._state, title='narco', last_played_url='url-liquido', running=True, played_count=1,
                            description="Spielt Narcotic von Liquido", last_played_artist='Liquido',
                            last_played_title='Narcotic')
-        self.assertEqual(testItem, i.state.last_played_item)
-        self.assertNotEqual(None, i.state.last_played_item)
+        self.assertEqual(testItem, i._state.last_played_item)
+        self.assertNotEqual(None, i._state.last_played_item)
 
         mediaserver_search_mock.assert_called_with(title='narco', artist=None)
-        scheduler_instance_mock.stop_job.assert_called()
-        scheduler_instance_mock.start_job.assert_called()
+        scheduler_stop_mock.assert_called()
+        scheduler_start_mock.assert_called()
         player_play_mock.assert_called_with('url-liquido', item=testItem)
 
-    @patch("controller.integrator.Scheduler")
-    @patch("controller.integrator.Player")
-    def test_play_url_with_loops_not_looping(self, player_mock, scheduler_mock):
+    @patch("controller.integrator.Scheduler.stop_job")
+    @patch("controller.integrator.Scheduler.start_job")
+    @patch("controller.test_integrator.FakePlayer.get_state")
+    @patch("controller.test_integrator.FakePlayer.play")
+    def test_play_url_with_loops_not_looping(self, player_play_mock, player_get_state_mock, start_job_mock, stop_job_mock):
         i = self._testee()
 
         self._initial_play_url(i)
-        scheduler_mock.assert_has_calls([call(),  # constructor call
-                                         call().start(),
-                                         call().stop_job(),
-                                         call().start_job(i._loop_process)  # make sure loop_process has been called
-                                         ])
-        player_mock.assert_has_calls([  # constructor call omitted
-                                      call().play('a-track')])
+        start_job_mock.assert_has_calls([call(self.DEFAULT_PLAYER_NAME, i._loop_process)])
+        stop_job_mock.assert_has_calls([call(self.DEFAULT_PLAYER_NAME)])
+        player_play_mock.assert_has_calls([call('a-track')])
 
         # first loop, still playing
-        scheduler_mock.reset_mock()
-        player_mock.reset_mock()
-        player_instance_mock = player_mock.return_value
-        player_instance_mock.get_state.return_value = PlayerState(TRANSPORT_STATE.STOPPED, 'a-track')
+        player_get_state_mock.return_value = PlayerState(TRANSPORT_STATE.STOPPED, 'a-track')
 
         i._loop_process()
-        player_instance_mock.get_state.assert_has_calls([call()])
-        self._assert_state(i.state, last_played_url='a-track', running=False, description="Aus", stop_reason="not looping")
+        player_get_state_mock.assert_has_calls([call()])
+        self._assert_state(i._state, last_played_url='a-track', running=False, description="Aus", stop_reason="not looping")
 
-    @patch("controller.integrator.Scheduler")
-    @patch("controller.integrator.Player")
-    def test_play_url_with_loops(self, player_mock, scheduler_mock):
+    @patch("controller.integrator.Scheduler.stop_job")
+    @patch("controller.integrator.Scheduler.start_job")
+    @patch("controller.test_integrator.FakePlayer.get_state")
+    @patch("controller.test_integrator.FakePlayer.play")
+    def test_play_url_with_loops(self, player_play_mock, player_get_state_mock, start_job_mock, stop_job_mock):
         i = self._testee()
 
         self._initial_play_url(i, True)
-        scheduler_mock.assert_has_calls([call(),  # constructor call
-                                         call().start(),
-                                         call().stop_job(),
-                                         call().start_job(i._loop_process)  # make sure loop_process has been called
-                                         ])
-
-        player_mock.assert_has_calls([  # constructor call omitted
-                                      call().play('a-track')])
+        start_job_mock.assert_has_calls([call(self.DEFAULT_PLAYER_NAME, i._loop_process)])
+        stop_job_mock.assert_has_calls([call(self.DEFAULT_PLAYER_NAME)])
+        player_play_mock.assert_has_calls([call('a-track')])
 
         # first loop, still playing
-        scheduler_mock.reset_mock()
-        player_mock.reset_mock()
-        player_instance_mock = player_mock.return_value
-        player_instance_mock.get_state.return_value = PlayerState(TRANSPORT_STATE.PLAYING, 'a-track')
+        player_get_state_mock.return_value = PlayerState(TRANSPORT_STATE.PLAYING, 'a-track')
 
         i._loop_process()
-        player_instance_mock.get_state.assert_has_calls([call()])
-        self._assert_state(i.state, url='a-track', last_played_url='a-track', running=True, played_count=1, loop=True,
+        player_get_state_mock.assert_has_calls([call()])
+        self._assert_state(i._state, url='a-track', last_played_url='a-track', running=True, played_count=1, loop=True,
                            description="Wiederholt a-track")
 
         # second loop, playing stopped
-        scheduler_mock.reset_mock()
-        player_mock.reset_mock()
-        player_instance_mock = player_mock.return_value
-        player_instance_mock.get_state.return_value = PlayerState(TRANSPORT_STATE.STOPPED, 'a-track')
+        player_play_mock.reset_mock()
+        player_get_state_mock.reset_mock()
+        player_get_state_mock.return_value = PlayerState(TRANSPORT_STATE.STOPPED, 'a-track')
 
         i._loop_process()
-        player_instance_mock.get_state.assert_has_calls([call()])
-        player_instance_mock.play.assert_has_calls([call('a-track')])  # play track again
-        self._assert_state(i.state, url='a-track', last_played_url='a-track', running=True, played_count=2, loop=True,
+        player_get_state_mock.assert_has_calls([call()])
+        player_play_mock.assert_has_calls([call('a-track')])  # play track again
+        self._assert_state(i._state, url='a-track', last_played_url='a-track', running=True, played_count=2, loop=True,
                            description="Wiederholt a-track")
 
     @patch("controller.test_integrator.FakeServer.search")
     @patch("controller.integrator.Scheduler")
-    @patch("controller.integrator.Player")
-    def test_play_item_with_loops(self, player_mock, scheduler_mock, mediaserver_search_mock):
+    @patch("controller.test_integrator.FakePlayer.get_state")
+    @patch("controller.test_integrator.FakePlayer.play")
+    def test_play_item_with_loops(self, player_play_mock, player_get_state_mock, scheduler_mock, mediaserver_search_mock):
         i = self._testee()
 
         # prepare mocks
@@ -363,69 +356,70 @@ class TestIntegrator(unittest.TestCase):
         self._initial_play_item(i, True)
 
         # prepare a loop that plays item again
-        player_mock.reset_mock()
-        player_instance_mock = player_mock.return_value
-        player_instance_mock.get_state.return_value = PlayerState(TRANSPORT_STATE.STOPPED, self.DEFAULT_ITEM.url)
+        player_get_state_mock.reset_mock()
+        player_play_mock.reset_mock()
+        player_get_state_mock.return_value = PlayerState(TRANSPORT_STATE.STOPPED, self.DEFAULT_ITEM.url)
         scheduler_mock.reset_mock()
         scheduler_instance_mock = scheduler_mock.return_value
         mediaserver_search_mock.reset_mock()
 
         # play item again (as it's the only one)
         i._loop_process()
-        self._assert_state(i.state, title='must go', last_played_url=self.DEFAULT_ITEM.url, played_count=2,
+        self._assert_state(i._state, title='must go', last_played_url=self.DEFAULT_ITEM.url, played_count=2,
                            last_played_artist="Queen", last_played_title="Show must go on",
                            running=True, loop=True, description="Spielt Lieder mit 'must go'")
         mediaserver_search_mock.assert_not_called()
         scheduler_instance_mock.start_job.assert_not_called()
         scheduler_instance_mock.stop_job.assert_not_called()
-        player_instance_mock.get_state.assert_called_with()
-        player_instance_mock.play.assert_called_with(self.DEFAULT_ITEM.url, item=self.DEFAULT_ITEM)
+        player_get_state_mock.assert_called_with()
+        player_play_mock.assert_called_with(self.DEFAULT_ITEM.url, item=self.DEFAULT_ITEM)
 
-    @patch("controller.integrator.Scheduler")
-    @patch("controller.integrator.Player")
-    def test_play_url_with_loops_shutdown(self, player_mock, scheduler_mock):
+    @patch("controller.integrator.Scheduler.stop_job")
+    @patch("controller.integrator.Scheduler.start_job")
+    @patch("controller.test_integrator.FakePlayer.get_state")
+    def test_play_url_with_loops_shutdown(self, player_get_state_mock, start_job_mock, stop_job_mock):
         i = self._testee()
 
         self._initial_play_url(i, True)
 
         # first loop, interrupted
-        scheduler_mock.reset_mock()
-        scheduler_instance_mock = scheduler_mock.return_value
-        player_mock.reset_mock()
-        player_instance_mock = player_mock.return_value
-        player_instance_mock.get_state.return_value = PlayerState(TRANSPORT_STATE.NO_MEDIA_PRESENT, None)
+        start_job_mock.reset_mock()
+        stop_job_mock.reset_mock()
+        player_get_state_mock.reset_mock()
+        player_get_state_mock.return_value = PlayerState(TRANSPORT_STATE.NO_MEDIA_PRESENT, None)
 
         i._loop_process()
-        player_instance_mock.get_state.assert_has_calls([call()])
-        scheduler_instance_mock.stop_job.assert_called_with()
-        scheduler_instance_mock.start_job.assert_not_called()
-        self._assert_state(i.state, running=False, loop=False, last_played_url=self.DEFAULT_URL, stop_reason="interrupted")
+        player_get_state_mock.assert_has_calls([call()])
+        stop_job_mock.assert_called_with(self.DEFAULT_PLAYER_NAME)
+        start_job_mock.assert_not_called()
+        self._assert_state(i._state, running=False, loop=False, last_played_url=self.DEFAULT_URL, stop_reason="interrupted")
 
-    @patch("controller.integrator.Scheduler")
-    @patch("controller.integrator.Player")
-    def test_play_url_with_loops_different_media(self, player_mock, scheduler_mock):
+    @patch("controller.integrator.Scheduler.stop_job")
+    @patch("controller.integrator.Scheduler.start_job")
+    @patch("controller.test_integrator.FakePlayer.get_state")
+    def test_play_url_with_loops_different_media(self, player_get_state_mock, start_job_mock, stop_job_mock):
         i = self._testee()
 
         self._initial_play_url(i, True)
 
         # first loop, interrupted with another title 'yet-another-track'
-        scheduler_mock.reset_mock()
-        scheduler_instance_mock = scheduler_mock.return_value
-        player_mock.reset_mock()
-        player_instance_mock = player_mock.return_value
-        player_instance_mock.get_state.return_value = PlayerState(TRANSPORT_STATE.PLAYING, 'yet-another-track')
+        start_job_mock.reset_mock()
+        stop_job_mock.reset_mock()
+        player_get_state_mock.reset_mock()
+        player_get_state_mock.return_value = PlayerState(TRANSPORT_STATE.PLAYING, 'yet-another-track')
 
         i._loop_process()
-        player_instance_mock.get_state.assert_has_calls([call()])
-        scheduler_instance_mock.stop_job.assert_called_with()
-        scheduler_instance_mock.start_job.assert_not_called()
-        self._assert_state(i.state, running=False, loop=False, last_played_url=self.DEFAULT_URL, description="Aus",
+        player_get_state_mock.assert_has_calls([call()])
+        stop_job_mock.assert_called_with(self.DEFAULT_PLAYER_NAME)
+        start_job_mock.assert_not_called()
+        self._assert_state(i._state, running=False, loop=False, last_played_url=self.DEFAULT_URL, description="Aus",
                            stop_reason="interrupted")
 
     @patch("controller.test_integrator.FakeServer.search")
-    @patch("controller.integrator.Scheduler")
-    @patch("controller.integrator.Player")
-    def test_play_url_after_item(self, player_mock, scheduler_mock, mediaserver_search_mock):
+    @patch("controller.integrator.Scheduler.stop_job")
+    @patch("controller.integrator.Scheduler.start_job")
+    @patch("controller.test_integrator.FakePlayer.play")
+    def test_play_url_after_item(self, player_play_mock, start_job_mock, stop_job_mock, mediaserver_search_mock):
         i = self._testee()
 
         # prepare mediaserver_mock
@@ -433,26 +427,26 @@ class TestIntegrator(unittest.TestCase):
 
         self._initial_play_item(i)
 
-        player_mock.reset_mock()
-        player_instance_mock = player_mock.return_value
-        scheduler_mock.reset_mock()
-        scheduler_instance_mock = scheduler_mock.return_value
+        start_job_mock.reset_mock()
+        stop_job_mock.reset_mock()
         mediaserver_search_mock.reset_mock()
 
         # play url
         res = i.play(self.DEFAULT_URL, None, None, False)
-        self._assert_state(i.state, url=self.DEFAULT_URL, running=True, last_played_url=self.DEFAULT_URL,
+        self._assert_state(i._state, url=self.DEFAULT_URL, running=True, last_played_url=self.DEFAULT_URL,
                            played_count=1, description="Spielt a-track")
-        self.assertEqual(res, i.state.view())
+        self.assertEqual(res, i._state.view())
 
-        player_instance_mock.play.assert_has_calls([call(self.DEFAULT_URL)])
-        scheduler_instance_mock.stop_job.assert_has_calls([call()])
+        player_play_mock.assert_has_calls([call(self.DEFAULT_URL)])
+        stop_job_mock.assert_has_calls([call(self.DEFAULT_PLAYER_NAME)])
+        start_job_mock.assert_called_once()
         mediaserver_search_mock.assert_not_called()
 
     @patch("controller.test_integrator.FakeServer.search")
-    @patch("controller.integrator.Scheduler")
-    @patch("controller.integrator.Player")
-    def test_play_item_not_found_after_item(self, player_mock, scheduler_mock, mediaserver_search_mock):
+    @patch("controller.integrator.Scheduler.stop_job")
+    @patch("controller.integrator.Scheduler.start_job")
+    @patch("controller.test_integrator.FakePlayer.play")
+    def test_play_item_not_found_after_item(self, player_play_mock, start_job_mock, stop_job_mock, mediaserver_search_mock):
         i = self._testee()
 
         # prepare mediaserver_mock
@@ -460,26 +454,26 @@ class TestIntegrator(unittest.TestCase):
         self._initial_play_item(i)
 
         # prepare mocks for item not found
-        player_mock.reset_mock()
-        player_instance_mock = player_mock.return_value
-        scheduler_mock.reset_mock()
-        scheduler_instance_mock = scheduler_mock.return_value
+        start_job_mock.reset_mock()
+        stop_job_mock.reset_mock()
+        player_play_mock.reset_mock()
         mediaserver_search_mock.reset_mock()
         mediaserver_search_mock.return_value = MySearchResponse([])
 
         res = i.play(None, 'must go', None, False)
-        self._assert_state(i.state, running=False, stop_reason="nothing found in media server")
-        self.assertEqual(res, i.state.view())
+        self._assert_state(i._state, running=False, stop_reason="nothing found in media server")
+        self.assertEqual(res, i._state.view())
 
-        player_instance_mock.play.assert_not_called()
-        scheduler_instance_mock.stop_job.assert_called()
-        scheduler_instance_mock.start_job.assert_called()
+        player_play_mock.assert_not_called()
+        stop_job_mock.assert_called()
+        start_job_mock.assert_called()
         mediaserver_search_mock.assert_called_with(title='must go', artist=None)
 
     @patch("controller.test_integrator.FakeServer.search")
-    @patch("controller.integrator.Scheduler")
-    @patch("controller.integrator.Player")
-    def test_play_url_noloop_after_item_loop(self, player_mock, scheduler_mock, mediaserver_search_mock):
+    @patch("controller.integrator.Scheduler.stop_job")
+    @patch("controller.integrator.Scheduler.start_job")
+    @patch("controller.test_integrator.FakePlayer.play")
+    def test_play_url_noloop_after_item_loop(self, player_play_mock, start_job_mock, stop_job_mock, mediaserver_search_mock):
         i = self._testee()
 
         # prepare mediaserver_mock
@@ -487,39 +481,34 @@ class TestIntegrator(unittest.TestCase):
 
         self._initial_play_item(i, True)
 
-        player_mock.reset_mock()
-        player_instance_mock = player_mock.return_value
-        scheduler_mock.reset_mock()
-        scheduler_instance_mock = scheduler_mock.return_value
+        start_job_mock.reset_mock()
+        stop_job_mock.reset_mock()
         mediaserver_search_mock.reset_mock()
 
         res = i.play(self.DEFAULT_URL, None, None, False)
-        self._assert_state(i.state, url=self.DEFAULT_URL, last_played_url=self.DEFAULT_URL, running=True, played_count=1,
+        self._assert_state(i._state, url=self.DEFAULT_URL, last_played_url=self.DEFAULT_URL, running=True, played_count=1,
                            description="Spielt a-track")
-        self.assertEqual(res, i.state.view())
+        self.assertEqual(res, i._state.view())
 
-        player_instance_mock.play.assert_called_with(self.DEFAULT_URL)
-        scheduler_instance_mock.stop_job.assert_called()
-        scheduler_instance_mock.start_job.assert_called()
+        player_play_mock.assert_called_with(self.DEFAULT_URL)
+        stop_job_mock.assert_called()
+        start_job_mock.assert_called()
         mediaserver_search_mock.assert_not_called()
 
-    @patch("controller.integrator.Scheduler")
-    @patch("controller.integrator.Player")
-    def test_play_url_loop_error(self, player_mock, scheduler_mock):
+    @patch("controller.integrator.Scheduler.stop_job")
+    @patch("controller.test_integrator.FakePlayer.get_state")
+    def test_play_url_loop_error(self, player_get_state_mock, stop_job_mock):
         i = self._testee()
 
         self._initial_play_url(i, True)
 
         # first loop, error
-        scheduler_mock.reset_mock()
-        scheduler_instance_mock = scheduler_mock.return_value
-        player_mock.reset_mock()
-        player_instance_mock = player_mock.return_value
-        player_instance_mock.get_state.side_effect = OSError("test-error")
+        stop_job_mock.reset_mock()
+        player_get_state_mock.side_effect = OSError("test-error")
 
         with self.assertRaises(OSError):
             i._loop_process()
-        player_instance_mock.get_state.assert_has_calls([call()])
-        scheduler_instance_mock.stop_job.assert_called_with()
-        self._assert_state(i.state, last_played_url='a-track', running=False, loop=False, description='Aus',
+        player_get_state_mock.assert_has_calls([call()])
+        stop_job_mock.assert_called_with(self.DEFAULT_PLAYER_NAME)
+        self._assert_state(i._state, last_played_url='a-track', running=False, loop=False, description='Aus',
                            stop_reason="exception in looping: test-error")

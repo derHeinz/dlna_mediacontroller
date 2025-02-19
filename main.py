@@ -1,10 +1,12 @@
 import logging
 import json
 
-from controller.integrator import Integrator
 from controller.webserver import WebServer
 from controller.appinfo import AppInfo
+from controller.scheduler import Scheduler
+from controller.player_dispatcher import PlayerDispatcher
 
+from dlna.player import Player
 from dlna.renderer import Renderer
 from dlna.mediaserver import MediaServer
 
@@ -29,14 +31,22 @@ def load_config():
         return json.load(data_file)
 
 
-def create_renderers(renderers_config: dict):
+def create_players(renderers_config: dict) -> list[Player]:
     res = []
     for r_config in renderers_config:
         renderer = Renderer(r_config.get('name'), r_config.get('aliases'), r_config.get('url'),
                             r_config.get('mac'), r_config.get('capabilities'), r_config.get('send_metadata'))
-        res.append(renderer)
+        res.append(Player(renderer))
     return res
 
+def validate_players(players: list[Player]):
+    names = []
+    for p in players:
+        p_name = p.get_name()
+        if p_name in names:
+            raise Exception(f"configuration contains two players with name {p_name}")
+        names.append(p_name)
+    
 
 def create_media_servers(media_servers_config: dict):
     res = []
@@ -55,10 +65,16 @@ def main():
     info.register('config', config)  # put full config into info
 
     logger.info("starting")
-    renderers = create_renderers(config.get('renderers'))
+    scheduler = Scheduler()
+    scheduler.start()
+
+    players = create_players(config.get('renderers'))
+    validate_players(players)
+
     media_servers = create_media_servers(config.get('media_servers'))
-    integrator = Integrator(renderers, media_servers[0])  # ONLY the first server!
-    w = WebServer(config, integrator, info)
+    
+    dispatcher = PlayerDispatcher(players, media_servers[0], scheduler)  # todo for now only one
+    w = WebServer(config, dispatcher, info)
     w.run()
 
 

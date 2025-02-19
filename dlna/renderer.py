@@ -16,6 +16,9 @@ class Renderer():
 
     def get_name(self):
         return self._name
+    
+    def get_mac(self):
+        return self._mac
 
     def include_metadata(self):
         return self._send_metadata
@@ -29,13 +32,9 @@ class Renderer():
         if self._aliases and len(self._aliases):
             for a in self._aliases:
                 res.append(a)
+        return res
 
-    def can_play_video(self):
-        if self._capabilities and 'video' in self._capabilities:
-            return True
-        return False
-
-    def can_play_audio(self):
-        if self._capabilities and 'audio' in self._capabilities:
+    def can_play_type(self, type: str):
+        if self._capabilities and type in self._capabilities:
             return True
         return False
