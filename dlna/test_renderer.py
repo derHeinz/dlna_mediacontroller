@@ -4,6 +4,19 @@ import unittest
 
 class TestRenderer(unittest.TestCase):
 
+    def test_getters(self):
+        rend = Renderer('myname', ['secondname', 'thirdname'], 'url', '4711', None, False)
+
+        self.assertEqual('myname', rend.get_name())
+
+        self.assertTrue('myname' in rend.get_known_names())
+        self.assertTrue('secondname' in rend.get_known_names())
+        self.assertTrue('thirdname' in rend.get_known_names())
+
+        self.assertEqual('url', rend.get_url())
+        self.assertEqual('4711', rend.get_mac())
+        self.assertEqual(False, rend.include_metadata())
+
     def test_can_play_methods(self):
         audio_only_renderer = Renderer('bla', None, None, None, ['video'], None)
 

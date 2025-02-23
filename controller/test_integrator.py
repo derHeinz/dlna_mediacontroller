@@ -305,8 +305,8 @@ class TestIntegrator(unittest.TestCase):
         stop_job_mock.assert_has_calls([call(self.DEFAULT_PLAYER_NAME)])
         player_play_mock.assert_has_calls([call('a-track')])
 
-        # first loop, still playing
-        player_get_state_mock.return_value = PlayerState(TRANSPORT_STATE.STOPPED, 'a-track')
+        # first loop, stop playing
+        player_get_state_mock.return_value = PlayerState(TRANSPORT_STATE.STOPPED, 'a-track', 0)
 
         i._loop_process()
         player_get_state_mock.assert_has_calls([call()])
@@ -325,7 +325,7 @@ class TestIntegrator(unittest.TestCase):
         player_play_mock.assert_has_calls([call('a-track')])
 
         # first loop, still playing
-        player_get_state_mock.return_value = PlayerState(TRANSPORT_STATE.PLAYING, 'a-track')
+        player_get_state_mock.return_value = PlayerState(TRANSPORT_STATE.PLAYING, 'a-track', 42)
 
         i._loop_process()
         player_get_state_mock.assert_has_calls([call()])
@@ -335,7 +335,7 @@ class TestIntegrator(unittest.TestCase):
         # second loop, playing stopped
         player_play_mock.reset_mock()
         player_get_state_mock.reset_mock()
-        player_get_state_mock.return_value = PlayerState(TRANSPORT_STATE.STOPPED, 'a-track')
+        player_get_state_mock.return_value = PlayerState(TRANSPORT_STATE.STOPPED, 'a-track', 0)
 
         i._loop_process()
         player_get_state_mock.assert_has_calls([call()])
@@ -358,7 +358,7 @@ class TestIntegrator(unittest.TestCase):
         # prepare a loop that plays item again
         player_get_state_mock.reset_mock()
         player_play_mock.reset_mock()
-        player_get_state_mock.return_value = PlayerState(TRANSPORT_STATE.STOPPED, self.DEFAULT_ITEM.url)
+        player_get_state_mock.return_value = PlayerState(TRANSPORT_STATE.STOPPED, self.DEFAULT_ITEM.url, 0)
         scheduler_mock.reset_mock()
         scheduler_instance_mock = scheduler_mock.return_value
         mediaserver_search_mock.reset_mock()
@@ -386,7 +386,7 @@ class TestIntegrator(unittest.TestCase):
         start_job_mock.reset_mock()
         stop_job_mock.reset_mock()
         player_get_state_mock.reset_mock()
-        player_get_state_mock.return_value = PlayerState(TRANSPORT_STATE.NO_MEDIA_PRESENT, None)
+        player_get_state_mock.return_value = PlayerState(TRANSPORT_STATE.NO_MEDIA_PRESENT, None, 0)
 
         i._loop_process()
         player_get_state_mock.assert_has_calls([call()])
@@ -406,7 +406,28 @@ class TestIntegrator(unittest.TestCase):
         start_job_mock.reset_mock()
         stop_job_mock.reset_mock()
         player_get_state_mock.reset_mock()
-        player_get_state_mock.return_value = PlayerState(TRANSPORT_STATE.PLAYING, 'yet-another-track')
+        player_get_state_mock.return_value = PlayerState(TRANSPORT_STATE.PLAYING, 'yet-another-track', 42)
+
+        i._loop_process()
+        player_get_state_mock.assert_has_calls([call()])
+        stop_job_mock.assert_called_with(self.DEFAULT_PLAYER_NAME)
+        start_job_mock.assert_not_called()
+        self._assert_state(i._state, running=False, loop=False, last_played_url=self.DEFAULT_URL, description="Aus",
+                           stop_reason="interrupted")
+        
+    @patch("controller.integrator.Scheduler.stop_job")
+    @patch("controller.integrator.Scheduler.start_job")
+    @patch("controller.test_integrator.FakePlayer.get_state")
+    def test_play_url_with_loops_stopped_unnaturally(self, player_get_state_mock, start_job_mock, stop_job_mock):
+        i = self._testee()
+
+        self._initial_play_url(i, True)
+
+        # first loop, interrupted due to unnaturally stoppage
+        start_job_mock.reset_mock()
+        stop_job_mock.reset_mock()
+        player_get_state_mock.reset_mock()
+        player_get_state_mock.return_value = PlayerState(TRANSPORT_STATE.STOPPED, self.DEFAULT_URL, 47)
 
         i._loop_process()
         player_get_state_mock.assert_has_calls([call()])

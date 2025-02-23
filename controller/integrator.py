@@ -103,10 +103,13 @@ class Integrator():
             logger.debug('Found renderer plays different track')
             return RUNNING_STATE.INTERRUPTED
 
-        # we know it's our track
         if transport_state is TRANSPORT_STATE.STOPPED:
-            logger.debug('Found renderer stopped')
-            return RUNNING_STATE.STOPPED
+            if player_state.progress_count == 0:
+                logger.debug('Found renderer stopped naturally (played until end)')
+                return RUNNING_STATE.STOPPED
+            else:
+                logger.debug('Found renderer stopped unnaturally (in the middle of a track)')
+                return RUNNING_STATE.INTERRUPTED
         if transport_state is TRANSPORT_STATE.PLAYING:
             logger.debug('Found renderer still running')
             return RUNNING_STATE.RUNNING

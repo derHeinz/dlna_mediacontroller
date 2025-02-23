@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from time import sleep
 
 from dlna.renderer import Renderer
-from dlna.dlna_helper import XML_HEADER, create_header, send_request
+from dlna import dlna_helper
 
 TRANSPORT_STATE = Enum('TransportState', ['STOPPED', 'PLAYING', 'TRANSITIONING', 'PAUSED_PLAYBACK',
                                           'RECORDING', 'PAUSED_RECORDING', 'NO_MEDIA_PRESENT'])
@@ -18,6 +18,7 @@ logger = logging.getLogger(__file__)
 class State():
     transport_state: TRANSPORT_STATE
     current_url: str
+    progress_count: int
 
 
 class Player():
@@ -49,14 +50,15 @@ class Player():
     '''
 
     # play should get the variable: speed
-    PLAY_BODY =       XML_HEADER + '<s:Envelope s:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/" xmlns:s="http://schemas.xmlsoap.org/soap/envelope/"><s:Body><u:Play xmlns:u="urn:schemas-upnp-org:service:AVTransport:1"><InstanceID>0</InstanceID><Speed>1</Speed></u:Play></s:Body></s:Envelope>'
-    PAUSE_BODY =      XML_HEADER + '<s:Envelope s:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/" xmlns:s="http://schemas.xmlsoap.org/soap/envelope/"><s:Body><u:Pause xmlns:u="urn:schemas-upnp-org:service:AVTransport:1"><InstanceID>0</InstanceID></u:Pause></s:Body></s:Envelope>'
-    STOP_BODY =       XML_HEADER + '<s:Envelope s:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/" xmlns:s="http://schemas.xmlsoap.org/soap/envelope/"><s:Body><u:Stop xmlns:u="urn:schemas-upnp-org:service:AVTransport:1"><InstanceID>0</InstanceID></u:Stop></s:Body></s:Envelope>'
-    POS_INFO_BODY =   XML_HEADER + '<s:Envelope s:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/" xmlns:s="http://schemas.xmlsoap.org/soap/envelope/"><s:Body><u:GetPositionInfo xmlns:u="urn:schemas-upnp-org:service:AVTransport:1"><InstanceID>0</InstanceID></u:GetPositionInfo></s:Body></s:Envelope>'
-    TRANS_INFO_BODY = XML_HEADER + '<s:Envelope s:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/" xmlns:s="http://schemas.xmlsoap.org/soap/envelope/"><s:Body><u:GetTransportInfo xmlns:u="urn:schemas-upnp-org:service:AVTransport:1"><InstanceID>0</InstanceID></u:GetTransportInfo></s:Body></s:Envelope>'
+    PLAY_BODY =       dlna_helper.XML_HEADER + '<s:Envelope s:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/" xmlns:s="http://schemas.xmlsoap.org/soap/envelope/"><s:Body><u:Play xmlns:u="urn:schemas-upnp-org:service:AVTransport:1"><InstanceID>0</InstanceID><Speed>1</Speed></u:Play></s:Body></s:Envelope>'
+    PAUSE_BODY =      dlna_helper.XML_HEADER + '<s:Envelope s:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/" xmlns:s="http://schemas.xmlsoap.org/soap/envelope/"><s:Body><u:Pause xmlns:u="urn:schemas-upnp-org:service:AVTransport:1"><InstanceID>0</InstanceID></u:Pause></s:Body></s:Envelope>'
+    STOP_BODY =       dlna_helper.XML_HEADER + '<s:Envelope s:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/" xmlns:s="http://schemas.xmlsoap.org/soap/envelope/"><s:Body><u:Stop xmlns:u="urn:schemas-upnp-org:service:AVTransport:1"><InstanceID>0</InstanceID></u:Stop></s:Body></s:Envelope>'
+    POS_INFO_BODY =   dlna_helper.XML_HEADER + '<s:Envelope s:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/" xmlns:s="http://schemas.xmlsoap.org/soap/envelope/"><s:Body><u:GetPositionInfo xmlns:u="urn:schemas-upnp-org:service:AVTransport:1"><InstanceID>0</InstanceID></u:GetPositionInfo></s:Body></s:Envelope>'
+    TRANS_INFO_BODY = dlna_helper.XML_HEADER + '<s:Envelope s:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/" xmlns:s="http://schemas.xmlsoap.org/soap/envelope/"><s:Body><u:GetTransportInfo xmlns:u="urn:schemas-upnp-org:service:AVTransport:1"><InstanceID>0</InstanceID></u:GetTransportInfo></s:Body></s:Envelope>'
+    MEDIA_INFO_BODY = dlna_helper.XML_HEADER + '<s:Envelope s:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/" xmlns:s="http://schemas.xmlsoap.org/soap/envelope/"><s:Body><u:GetMediaInfo xmlns:u="urn:schemas-upnp-org:service:AVTransport:1"><InstanceID>0</InstanceID></u:GetMediaInfo></s:Body></s:Envelope>'
     # should get the variabl: url and metadata
-    PREPARE_BODY =    XML_HEADER + '<s:Envelope s:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/" xmlns:s="http://schemas.xmlsoap.org/soap/envelope/"><s:Body><u:SetAVTransportURI xmlns:u="urn:schemas-upnp-org:service:AVTransport:1"><InstanceID>0</InstanceID><CurrentURI>{url}</CurrentURI><CurrentURIMetaData>{metadata}</CurrentURIMetaData></u:SetAVTransportURI></s:Body></s:Envelope>'
-    PREPARE_BODY_2 =  XML_HEADER + '<s:Envelope s:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/" xmlns:s="http://schemas.xmlsoap.org/soap/envelope/"><s:Body><u:SetAVTransportURI xmlns:u="urn:schemas-upnp-org:service:AVTransport:1"><InstanceID>0</InstanceID><CurrentURI>{url}</CurrentURI></u:SetAVTransportURI></s:Body></s:Envelope>'
+    PREPARE_BODY =    dlna_helper.XML_HEADER + '<s:Envelope s:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/" xmlns:s="http://schemas.xmlsoap.org/soap/envelope/"><s:Body><u:SetAVTransportURI xmlns:u="urn:schemas-upnp-org:service:AVTransport:1"><InstanceID>0</InstanceID><CurrentURI>{url}</CurrentURI><CurrentURIMetaData>{metadata}</CurrentURIMetaData></u:SetAVTransportURI></s:Body></s:Envelope>'
+    PREPARE_BODY_2 =  dlna_helper.XML_HEADER + '<s:Envelope s:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/" xmlns:s="http://schemas.xmlsoap.org/soap/envelope/"><s:Body><u:SetAVTransportURI xmlns:u="urn:schemas-upnp-org:service:AVTransport:1"><InstanceID>0</InstanceID><CurrentURI>{url}</CurrentURI></u:SetAVTransportURI></s:Body></s:Envelope>'
 
     # should get the variabl: url and metadata
     PREPARE_NEXT_BODY = '<?xml version="1.0" encoding="utf-8" standalone="yes"?>\n<s:Envelope s:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/" xmlns:s="http://schemas.xmlsoap.org/soap/envelope/"><s:Body><u:SetAVTransportURI xmlns:u="urn:schemas-upnp-org:service:AVTransport:1"><InstanceID>0</InstanceID><NextURI>{url}</NextURI><NextURIMetaData>{metadata}</NextURIMetaData></u:SetAVTransportURI></s:Body></s:Envelope>'
@@ -73,12 +75,10 @@ class Player():
         return self._renderer.get_name()
 
     def stop(self):
-        body = self.STOP_BODY
-        return self._send_request('Stop', body)
+        return self._send_request('Stop', self.STOP_BODY)
 
     def pause(self):
-        body = self.PAUSE_BODY
-        return self._send_request('Pause', body)
+        return self._send_request('Pause', self.PAUSE_BODY)
 
     def play(self, url_to_play, **kwargs):
         # prepare metadata
@@ -100,8 +100,7 @@ class Player():
         self._wait_for_transport_state([TRANSPORT_STATE.STOPPED, TRANSPORT_STATE.PLAYING, TRANSPORT_STATE.PAUSED_PLAYBACK])
 
         # play SOAP message
-        play_body = self.PLAY_BODY
-        return self._send_request('Play', play_body)
+        return self._send_request('Play', self.PLAY_BODY)
 
     def get_state(self) -> State:
         position_info = self._position_info()
@@ -109,10 +108,11 @@ class Player():
 
         transport_state = transport_info.get('CurrentTransportState', None)
         track_URI = position_info.get('TrackURI', None)
+        rel_count = int(position_info.get('RelCount', None))
 
         logger.debug(f"current transport_state: {transport_state} and track: {track_URI}")
 
-        return State(TRANSPORT_STATE[transport_state], track_URI)
+        return State(TRANSPORT_STATE[transport_state], track_URI, rel_count)
     
     # internal methods
 
@@ -129,7 +129,10 @@ class Player():
 
     def _position_info(self):
         response = self._send_request('GetPositionInfo', self.POS_INFO_BODY)
-        xml_content = ET.fromstring(response.read().decode('utf-8'))
+        response_as_text = response.read().decode('utf-8')
+        logger.debug(f"position info response: {response_as_text}")
+        xml_content = ET.fromstring(response_as_text)
+        
         getPositionInfoResponse = xml_content.find(".//{urn:schemas-upnp-org:service:AVTransport:1}GetPositionInfoResponse")
         result = {}
 
@@ -140,7 +143,10 @@ class Player():
 
     def _transport_info(self):
         response = self._send_request('GetTransportInfo', self.TRANS_INFO_BODY)
-        xml_content = ET.fromstring(response.read().decode('utf-8'))
+        response_as_text = response.read().decode('utf-8')
+        logger.debug(f"transport info response: {response_as_text}")
+        xml_content = ET.fromstring(response_as_text)
+
         getPositionInfoResponse = xml_content.find(".//{urn:schemas-upnp-org:service:AVTransport:1}GetTransportInfoResponse")
         result = {}
 
@@ -148,7 +154,7 @@ class Player():
             result[child.tag] = child.text
 
         return result
-    
+
     def _wait_for_transport_state(self, expected_transport_states: list[TRANSPORT_STATE]):
         logger.debug(f"waiting for state {','.join(map(str, expected_transport_states))}")
         for i in range(20):
@@ -163,7 +169,7 @@ class Player():
 
     def _send_request(self, header_keyword, body):
         device_url = self._renderer.get_url()
-        header = create_header('AVTransport', header_keyword)
-        return send_request(device_url, header, body)
+        header = dlna_helper.create_header('AVTransport', header_keyword)
+        return dlna_helper.send_request(device_url, header, body)
 
     
