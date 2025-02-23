@@ -1,6 +1,14 @@
 {
 	"webserver_port": 7777,
-	"renderer_name": "Test DLNA Renderer",
-	"renderer_url": "http://127.0.0.1:12345/AVTransport/action",
-	"mediaserver_url": "http://127.0.0.1:12346/MediaServer/ContentDirectory/Control"
+	"webserver_cors_allow": true,
+	"renderers": [
+		{"name": "Example Renderer 1", "aliases": ["Radio"], "url": "http://x.y.z.1:12345/AVTransport/control", 
+		 "capabilities": ["audio"], "send_metadata": true },
+		{"name": "Example Renderer 2", "aliases": ["TV"], "url": "http://x.y.z.2:12345/AVTransport/", 
+		 "mac": "ab:cd:ef:12:34:56", "capabilities": ["audio", "video"], "send_metadata": true }
+	],
+	"media_servers": [
+		{"name": "MS-A", "url": "http://x.y.z.3:12345/ContentDir"},
+		{"name": "MS-B", "url": "http://x.y.z.4:12345/MediaServer/ContentDirectory/Control"}
+	]
 }
