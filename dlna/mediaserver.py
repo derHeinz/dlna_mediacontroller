@@ -1,7 +1,8 @@
 import xml.etree.ElementTree as ET
 import random
 
-from dlna.dlna_helper import XML_HEADER, NAMESPACE_DIDL, NAMESPACE_DC, NAMESPACE_UPNP, create_header, send_request, namespace_free_res_element
+from dlna import dlna_helper
+
 
 # TODO extract item
 # TODO str(item) should yield something nice
@@ -11,31 +12,31 @@ class Item():
         self._element = item_element
 
     def get_title(self):
-        e = self._element.find('dc:title', {'dc': NAMESPACE_DC})
+        e = self._element.find('dc:title', {'dc': dlna_helper.NAMESPACE_DC})
         if e is None:
             return None
         return e.text
 
     def get_actor(self):
-        e = self._element.find('upnp:actor', {'upnp': NAMESPACE_UPNP})
+        e = self._element.find('upnp:actor', {'upnp': dlna_helper.NAMESPACE_UPNP})
         if e is None:
             return None
         return e.text
 
     def get_creator(self):
-        e = self._element.find('dc:creator', {'dc': NAMESPACE_DC})
+        e = self._element.find('dc:creator', {'dc': dlna_helper.NAMESPACE_DC})
         if e is None:
             return None
         return e.text
 
     def get_url(self):
-        e = self._element.find('d:res', {'d': NAMESPACE_DIDL})
+        e = self._element.find('d:res', {'d': dlna_helper.NAMESPACE_DIDL})
         if e is None:
             return None
         return e.text
 
     def get_res(self):
-        e = self._element.find('d:res', {'d': NAMESPACE_DIDL})
+        e = self._element.find('d:res', {'d': dlna_helper.NAMESPACE_DIDL})
         if e is None:
             return None
         return e
@@ -46,7 +47,7 @@ class Item():
         if type(res) is bytes:
             # print("res is of type bytes, reformatting")
             res = res.decode('utf-8')
-        return namespace_free_res_element(res)
+        return dlna_helper.namespace_free_res_element(res)
 
     def get_item(self):
         return self._element
@@ -64,7 +65,7 @@ class SearchResponse():
         result = self._root_element.find('.//Result').text
 
         # create valid XML from result. This field containing escaped XML without header.
-        result_unescaped = XML_HEADER + result
+        result_unescaped = dlna_helper.XML_HEADER + result
         self._result_root = ET.fromstring(result_unescaped)
 
     def get_matches(self):
@@ -90,15 +91,18 @@ class MediaServer():
 
     QUERY = '''
     <?xml version="1.0"?>
-    <SOAP-ENV:Envelope xmlns:SOAP-ENV="http://schemas.xmlsoap.org/soap/envelope/" SOAP-ENV:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/">
+    <SOAP-ENV:Envelope xmlns:SOAP-ENV="http://schemas.xmlsoap.org/soap/envelope/"
+     SOAP-ENV:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/">
         <SOAP-ENV:Body>
             <m:Search xmlns:m="urn:schemas-upnp-org:service:ContentDirectory:1">
                 <ContainerID xmlns:dt="urn:schemas-microsoft-com:datatypes" dt:dt="string">0</ContainerID>
-                <SearchCriteria xmlns:dt="urn:schemas-microsoft-com:datatypes" dt:dt="string">upnp:class derivedfrom "object.item.audioItem" and @refID exists false {criteria}</SearchCriteria>
+                <SearchCriteria xmlns:dt="urn:schemas-microsoft-com:datatypes" dt:dt="string">
+                 upnp:class derivedfrom "object.item.audioItem" and @refID exists false {criteria}</SearchCriteria>
                 <Filter xmlns:dt="urn:schemas-microsoft-com:datatypes" dt:dt="string">*</Filter>
                 <StartingIndex xmlns:dt="urn:schemas-microsoft-com:datatypes" dt:dt="ui4">0</StartingIndex>
                 <RequestedCount xmlns:dt="urn:schemas-microsoft-com:datatypes" dt:dt="ui4">200</RequestedCount>
-                <SortCriteria xmlns:dt="urn:schemas-microsoft-com:datatypes" dt:dt="string">+upnp:artist,+upnp:album,+upnp:originalTrackNumber,+dc:title</SortCriteria>
+                <SortCriteria xmlns:dt="urn:schemas-microsoft-com:datatypes" dt:dt="string">
+                 +upnp:artist,+upnp:album,+upnp:originalTrackNumber,+dc:title</SortCriteria>
             </m:Search>
         </SOAP-ENV:Body>
     </SOAP-ENV:Envelope>
@@ -123,7 +127,7 @@ class MediaServer():
         return not (str and str.strip())
 
     def _send_request(self, header, body):
-        return send_request(self._url, header, body)
+        return dlna_helper.send_request(self._url, header, body)
 
     def _create_header(self):
-        return create_header('ContentDirectory', 'Search')
+        return dlna_helper.create_header('ContentDirectory', 'Search')

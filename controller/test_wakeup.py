@@ -4,6 +4,7 @@ from urllib.error import HTTPError, URLError
 
 from controller.wakeup import ensure_online
 
+
 class FakeRenderer:
 
     def get_url(self):
@@ -35,7 +36,7 @@ class TestWakeup(unittest.TestCase):
     @patch("controller.wakeup.send_magic_packet")
     def test_online_without_mac(self, wakeonlan, urlopen):
         urlopen.side_effect = self.DEFAULT_ONLINE_ERROR
-        
+
         mock_renderer = self._testee_renderer()
         mock_renderer.get_mac.return_value = None
 
@@ -47,7 +48,7 @@ class TestWakeup(unittest.TestCase):
     @patch("controller.wakeup.send_magic_packet")
     def test_offline_without_mac(self, wakeonlan, urlopen):
         urlopen.side_effect = self.DEFAULT_OFFLINE_ERROR
-        
+
         mock_renderer = self._testee_renderer()
         mock_renderer.get_mac.return_value = None
 
@@ -67,15 +68,15 @@ class TestWakeup(unittest.TestCase):
         wakeonlan.assert_not_called()
         urlopen.assert_has_calls([self.DEFAULT_CHECK_CALL])
 
-    
     @patch("controller.wakeup.urlopen")
     @patch("controller.wakeup.send_magic_packet")
     def test_with_mac_wake_device(self, wakeonlan, urlopen):
-        
+
         mock_renderer = self._testee_renderer()
 
         # 3 calls, first 2 calls OFFLINE than ONLINE
-        urlopen.side_effect = [self.DEFAULT_OFFLINE_ERROR, self.DEFAULT_OFFLINE_ERROR, self.DEFAULT_OFFLINE_ERROR, self.DEFAULT_ONLINE_ERROR]
+        urlopen.side_effect = [self.DEFAULT_OFFLINE_ERROR, self.DEFAULT_OFFLINE_ERROR,
+                               self.DEFAULT_OFFLINE_ERROR, self.DEFAULT_ONLINE_ERROR]
 
         self.assertTrue(ensure_online(mock_renderer))
 
@@ -101,7 +102,3 @@ class TestWakeup(unittest.TestCase):
                                   self.DEFAULT_CHECK_CALL, self.DEFAULT_CHECK_CALL, self.DEFAULT_CHECK_CALL,
                                   self.DEFAULT_CHECK_CALL, self.DEFAULT_CHECK_CALL, self.DEFAULT_CHECK_CALL,
                                   self.DEFAULT_CHECK_CALL])
-
-
-
-

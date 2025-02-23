@@ -13,17 +13,18 @@ class TestPlayer(unittest.TestCase):
 
         def get_name(self):
             return TestPlayer.DEFAULT_RENDERER_NAME
-        
+
         def get_url(self):
             return TestPlayer.DEFAULT_URL
-        
+
         def include_metadata(self):
             return False
-        
+
     class FakeResponse:
 
         FAKE_POSITION_INFO = '''<?xml version="1.0" encoding="utf-8"?>
-        <s:Envelope s:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/" xmlns:s="http://schemas.xmlsoap.org/soap/envelope/">
+        <s:Envelope s:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/"
+         xmlns:s="http://schemas.xmlsoap.org/soap/envelope/">
             <s:Body>
                 <u:GetPositionInfoResponse xmlns:u="urn:schemas-upnp-org:service:AVTransport:1">
                     <Track>0</Track>
@@ -40,7 +41,8 @@ class TestPlayer(unittest.TestCase):
         '''
 
         FAKE_TRANSPORT_INFO = '''<?xml version="1.0" encoding="utf-8"?>
-        <s:Envelope s:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/" xmlns:s="http://schemas.xmlsoap.org/soap/envelope/">
+        <s:Envelope s:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/"
+         xmlns:s="http://schemas.xmlsoap.org/soap/envelope/">
             <s:Body>
                 <u:GetTransportInfoResponse xmlns:u="urn:schemas-upnp-org:service:AVTransport:1">
                     <CurrentTransportState>{transport_state}</CurrentTransportState>
@@ -53,13 +55,13 @@ class TestPlayer(unittest.TestCase):
 
         class Decodeable:
             text: str
+
             def __init__(self, txt):
                 self.text = txt
 
             def decode(self, encoding):
                 assert encoding == 'utf-8'
                 return self.text
-            
 
         def __init__(self, txt):
             self.text = txt
@@ -67,16 +69,15 @@ class TestPlayer(unittest.TestCase):
 
         def read(self):
             return self.read_result
-        
+
         def create_position_info(uri, rel_count):
             txt = TestPlayer.FakeResponse.FAKE_POSITION_INFO.format(uri=uri, cnt=rel_count)
             return TestPlayer.FakeResponse(txt)
-        
+
         def create_transport_info(transport_state):
             txt = TestPlayer.FakeResponse.FAKE_TRANSPORT_INFO.format(transport_state=transport_state)
             return TestPlayer.FakeResponse(txt)
-    
-        
+
     def test_getter(self):
         r = TestPlayer.FakeRenderer()
         p = Player(r)
@@ -122,24 +123,22 @@ class TestPlayer(unittest.TestCase):
         create_header_mock.return_value = fake_header
 
         send_request_mock.side_effect = [
-            None, # SetAVTransportURI response is not used!
+            None,  # SetAVTransportURI response is not used!
             TestPlayer.FakeResponse.create_transport_info('STOPPED'),
-            None # Play response not used
+            None  # Play response not used
         ]
 
         p.play(track_uri)
 
         create_header_mock.assert_has_calls([
-            call('AVTransport', 'SetAVTransportURI'), 
+            call('AVTransport', 'SetAVTransportURI'),
             call('AVTransport', 'GetTransportInfo'),
             call('AVTransport', 'Play')])
-        
+
         send_request_mock.assert_has_calls([
-            call(self.DEFAULT_URL, fake_header, Player.PREPARE_BODY.format(url=track_uri, metadata='')), 
+            call(self.DEFAULT_URL, fake_header, Player.PREPARE_BODY.format(url=track_uri, metadata='')),
             call(self.DEFAULT_URL, fake_header, Player.TRANS_INFO_BODY),
             call(self.DEFAULT_URL, fake_header, Player.PLAY_BODY)])
-
-
 
     @patch("dlna.dlna_helper.send_request")
     @patch("dlna.dlna_helper.create_header")
@@ -160,9 +159,9 @@ class TestPlayer(unittest.TestCase):
         self.assertEqual(0, res.progress_count)
 
         create_header_mock.assert_has_calls([
-            call('AVTransport', 'GetPositionInfo'), 
+            call('AVTransport', 'GetPositionInfo'),
             call('AVTransport', 'GetTransportInfo')])
-        
+
         send_request_mock.assert_has_calls([
-            call(self.DEFAULT_URL, fake_header, Player.POS_INFO_BODY), 
+            call(self.DEFAULT_URL, fake_header, Player.POS_INFO_BODY),
             call(self.DEFAULT_URL, fake_header, Player.TRANS_INFO_BODY)])

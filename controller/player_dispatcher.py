@@ -12,6 +12,7 @@ from controller.wakeup import ensure_online
 
 logger = logging.getLogger(__file__)
 
+
 @dataclass
 class Mapping():
     renderer: Renderer
@@ -48,20 +49,20 @@ class PlayerDispatcher:
                 if target in m.renderer.get_known_names():
                     return m.renderer
         return None
-    
+
     def _renderer_for_type(self, type: str) -> Renderer:
         if (type):
             for m in self._renderers_to_integrators:
                 if m.renderer.can_play_type(type):
                     return m.renderer
         return None
-    
+
     def _find_integrator_from_renderer(self, renderer) -> Integrator:
         for m in self._renderers_to_integrators:
             if m.renderer == renderer:
-                
+
                 return m.integrator
-            
+
     def _renderer_available(self, renderer) -> bool:
         if not renderer:
             return False
@@ -82,8 +83,8 @@ class PlayerDispatcher:
                 else:
                     msg = f"The requested renderer {command.target} is not available"
                     logger.error(msg)
-                    raise RequestCannotBeHandeledException(msg) 
-           
+                    raise RequestCannotBeHandeledException(msg)
+
         # renderer from command's type
         if hasattr(command, 'type') and command.type:
             renderer = self._renderer_for_type(command.type)

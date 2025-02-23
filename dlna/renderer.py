@@ -16,7 +16,7 @@ class Renderer():
 
     def get_name(self):
         return self._name
-    
+
     def get_mac(self):
         return self._mac
 

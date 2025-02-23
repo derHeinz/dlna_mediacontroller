@@ -26,24 +26,23 @@ class TestPlayerDispatcher(unittest.TestCase):
 
     DEFAULT_URL = 'http://bla'
 
-    
     def _testee(self):
 
         def true_on_audio(type: str):
             if "audio" == type:
                 return True
             return False
-        
+
         def true_on_audio_and_video(type: str):
             if type in ["audio", "video"]:
                 return True
             return False
-        
+
         fake_renderer_A_mock = self.FAKE_PLAYER_A.get_renderer.return_value
         fake_renderer_A_mock.get_known_names.return_value = ['A']
         fake_renderer_A_mock.get_name.return_value = 'A'
         fake_renderer_A_mock.can_play_type.side_effect = true_on_audio
-        
+
         fake_renderer_B_mock = self.FAKE_PLAYER_B.get_renderer.return_value
         fake_renderer_B_mock.get_known_names.return_value = ['B']
         fake_renderer_B_mock.get_name.return_value = 'B'

@@ -110,7 +110,7 @@ class WebServer(Thread):
         if request.is_json:
             content = request.json
             command = Command(content.get('target'))
-        
+
         try:
             res = func(command)
             return self._make_response_and_add_cors(jsonify(res), 200)

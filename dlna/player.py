@@ -29,11 +29,11 @@ class Player():
     # http://www.upnp.org/specs/av/UPnP-av-ContentDirectory-v1-Service.pdf
     # https://developer.sony.com/develop/audio-control-api/get-started/play-dlna-file#tutorial-step-3
     META_DATA = '''
-    <DIDL-Lite xmlns="urn:schemas-upnp-org:metadata-1-0/DIDL-Lite/" 
-    xmlns:upnp="urn:schemas-upnp-org:metadata-1-0/upnp/" 
-    xmlns:dc="http://purl.org/dc/elements/1.1/" 
-    xmlns:dlna="urn:schemas-dlna-org:metadata-1-0/" 
-    xmlns:sec="http://www.sec.co.kr/" 
+    <DIDL-Lite xmlns="urn:schemas-upnp-org:metadata-1-0/DIDL-Lite/"
+    xmlns:upnp="urn:schemas-upnp-org:metadata-1-0/upnp/"
+    xmlns:dc="http://purl.org/dc/elements/1.1/"
+    xmlns:dlna="urn:schemas-dlna-org:metadata-1-0/"
+    xmlns:sec="http://www.sec.co.kr/"
     xmlns:pv="http://www.pv.com/pvns/">
         <item id="{id}" parentID="{parentid}" restricted="1">
             <dc:title>{title}</dc:title>
@@ -42,7 +42,7 @@ class Player():
             <upnp:artist>{artist}</upnp:artist>
             <upnp:actor>{artist}</upnp:actor>
             <upnp:author>{artist}</upnp:author>
-            
+
             <upnp:class>object.item.audioItem.musicTrack</upnp:class>
             {res}
         </item>
@@ -50,27 +50,27 @@ class Player():
     '''
 
     # play should get the variable: speed
-    PLAY_BODY =       dlna_helper.XML_HEADER + '<s:Envelope s:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/" xmlns:s="http://schemas.xmlsoap.org/soap/envelope/"><s:Body><u:Play xmlns:u="urn:schemas-upnp-org:service:AVTransport:1"><InstanceID>0</InstanceID><Speed>1</Speed></u:Play></s:Body></s:Envelope>'
-    PAUSE_BODY =      dlna_helper.XML_HEADER + '<s:Envelope s:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/" xmlns:s="http://schemas.xmlsoap.org/soap/envelope/"><s:Body><u:Pause xmlns:u="urn:schemas-upnp-org:service:AVTransport:1"><InstanceID>0</InstanceID></u:Pause></s:Body></s:Envelope>'
-    STOP_BODY =       dlna_helper.XML_HEADER + '<s:Envelope s:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/" xmlns:s="http://schemas.xmlsoap.org/soap/envelope/"><s:Body><u:Stop xmlns:u="urn:schemas-upnp-org:service:AVTransport:1"><InstanceID>0</InstanceID></u:Stop></s:Body></s:Envelope>'
-    POS_INFO_BODY =   dlna_helper.XML_HEADER + '<s:Envelope s:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/" xmlns:s="http://schemas.xmlsoap.org/soap/envelope/"><s:Body><u:GetPositionInfo xmlns:u="urn:schemas-upnp-org:service:AVTransport:1"><InstanceID>0</InstanceID></u:GetPositionInfo></s:Body></s:Envelope>'
+    PLAY_BODY = dlna_helper.XML_HEADER + '<s:Envelope s:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/" xmlns:s="http://schemas.xmlsoap.org/soap/envelope/"><s:Body><u:Play xmlns:u="urn:schemas-upnp-org:service:AVTransport:1"><InstanceID>0</InstanceID><Speed>1</Speed></u:Play></s:Body></s:Envelope>'
+    PAUSE_BODY = dlna_helper.XML_HEADER + '<s:Envelope s:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/" xmlns:s="http://schemas.xmlsoap.org/soap/envelope/"><s:Body><u:Pause xmlns:u="urn:schemas-upnp-org:service:AVTransport:1"><InstanceID>0</InstanceID></u:Pause></s:Body></s:Envelope>'
+    STOP_BODY = dlna_helper.XML_HEADER + '<s:Envelope s:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/" xmlns:s="http://schemas.xmlsoap.org/soap/envelope/"><s:Body><u:Stop xmlns:u="urn:schemas-upnp-org:service:AVTransport:1"><InstanceID>0</InstanceID></u:Stop></s:Body></s:Envelope>'
+    POS_INFO_BODY = dlna_helper.XML_HEADER + '<s:Envelope s:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/" xmlns:s="http://schemas.xmlsoap.org/soap/envelope/"><s:Body><u:GetPositionInfo xmlns:u="urn:schemas-upnp-org:service:AVTransport:1"><InstanceID>0</InstanceID></u:GetPositionInfo></s:Body></s:Envelope>'
     TRANS_INFO_BODY = dlna_helper.XML_HEADER + '<s:Envelope s:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/" xmlns:s="http://schemas.xmlsoap.org/soap/envelope/"><s:Body><u:GetTransportInfo xmlns:u="urn:schemas-upnp-org:service:AVTransport:1"><InstanceID>0</InstanceID></u:GetTransportInfo></s:Body></s:Envelope>'
     MEDIA_INFO_BODY = dlna_helper.XML_HEADER + '<s:Envelope s:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/" xmlns:s="http://schemas.xmlsoap.org/soap/envelope/"><s:Body><u:GetMediaInfo xmlns:u="urn:schemas-upnp-org:service:AVTransport:1"><InstanceID>0</InstanceID></u:GetMediaInfo></s:Body></s:Envelope>'
     # should get the variabl: url and metadata
-    PREPARE_BODY =    dlna_helper.XML_HEADER + '<s:Envelope s:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/" xmlns:s="http://schemas.xmlsoap.org/soap/envelope/"><s:Body><u:SetAVTransportURI xmlns:u="urn:schemas-upnp-org:service:AVTransport:1"><InstanceID>0</InstanceID><CurrentURI>{url}</CurrentURI><CurrentURIMetaData>{metadata}</CurrentURIMetaData></u:SetAVTransportURI></s:Body></s:Envelope>'
-    PREPARE_BODY_2 =  dlna_helper.XML_HEADER + '<s:Envelope s:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/" xmlns:s="http://schemas.xmlsoap.org/soap/envelope/"><s:Body><u:SetAVTransportURI xmlns:u="urn:schemas-upnp-org:service:AVTransport:1"><InstanceID>0</InstanceID><CurrentURI>{url}</CurrentURI></u:SetAVTransportURI></s:Body></s:Envelope>'
+    PREPARE_BODY = dlna_helper.XML_HEADER + '<s:Envelope s:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/" xmlns:s="http://schemas.xmlsoap.org/soap/envelope/"><s:Body><u:SetAVTransportURI xmlns:u="urn:schemas-upnp-org:service:AVTransport:1"><InstanceID>0</InstanceID><CurrentURI>{url}</CurrentURI><CurrentURIMetaData>{metadata}</CurrentURIMetaData></u:SetAVTransportURI></s:Body></s:Envelope>'
+    PREPARE_BODY_2 = dlna_helper.XML_HEADER + '<s:Envelope s:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/" xmlns:s="http://schemas.xmlsoap.org/soap/envelope/"><s:Body><u:SetAVTransportURI xmlns:u="urn:schemas-upnp-org:service:AVTransport:1"><InstanceID>0</InstanceID><CurrentURI>{url}</CurrentURI></u:SetAVTransportURI></s:Body></s:Envelope>'
 
     # should get the variabl: url and metadata
     PREPARE_NEXT_BODY = '<?xml version="1.0" encoding="utf-8" standalone="yes"?>\n<s:Envelope s:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/" xmlns:s="http://schemas.xmlsoap.org/soap/envelope/"><s:Body><u:SetAVTransportURI xmlns:u="urn:schemas-upnp-org:service:AVTransport:1"><InstanceID>0</InstanceID><NextURI>{url}</NextURI><NextURIMetaData>{metadata}</NextURIMetaData></u:SetAVTransportURI></s:Body></s:Envelope>'
 
     def __init__(self, renderer: Renderer):
-        self._renderer:Renderer = renderer
+        self._renderer: Renderer = renderer
 
     # external methods
 
     def get_renderer(self):
         return self._renderer
-    
+
     def get_name(self):
         return self._renderer.get_name()
 
@@ -113,7 +113,7 @@ class Player():
         logger.debug(f"current transport_state: {transport_state} and track: {track_URI}")
 
         return State(TRANSPORT_STATE[transport_state], track_URI, rel_count)
-    
+
     # internal methods
 
     def _escape(self, str):
@@ -132,7 +132,7 @@ class Player():
         response_as_text = response.read().decode('utf-8')
         logger.debug(f"position info response: {response_as_text}")
         xml_content = ET.fromstring(response_as_text)
-        
+
         getPositionInfoResponse = xml_content.find(".//{urn:schemas-upnp-org:service:AVTransport:1}GetPositionInfoResponse")
         result = {}
 
@@ -171,5 +171,3 @@ class Player():
         device_url = self._renderer.get_url()
         header = dlna_helper.create_header('AVTransport', header_keyword)
         return dlna_helper.send_request(device_url, header, body)
-
-    

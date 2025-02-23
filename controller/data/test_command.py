@@ -1,6 +1,7 @@
 from controller.data.command import PlayCommand
 import unittest
 
+
 class TestCommand(unittest.TestCase):
 
     def test_to_str(self):

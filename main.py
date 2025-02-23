@@ -39,6 +39,7 @@ def create_players(renderers_config: dict) -> list[Player]:
         res.append(Player(renderer))
     return res
 
+
 def validate_players(players: list[Player]):
     names = []
     for p in players:
@@ -46,7 +47,7 @@ def validate_players(players: list[Player]):
         if p_name in names:
             raise Exception(f"configuration contains two players with name {p_name}")
         names.append(p_name)
-    
+
 
 def create_media_servers(media_servers_config: dict):
     res = []
@@ -72,7 +73,7 @@ def main():
     validate_players(players)
 
     media_servers = create_media_servers(config.get('media_servers'))
-    
+
     dispatcher = PlayerDispatcher(players, media_servers[0], scheduler)  # todo for now only one
     w = WebServer(config, dispatcher, info)
     w.run()

@@ -12,7 +12,6 @@ class Scheduler():
     scheduler: BaseScheduler = None
     JOB_NAME_PREFIX = "Media_Observer_"
 
-
     def start(self, blocking=False):
         logger.debug("starting scheduler")
         if blocking:

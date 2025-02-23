@@ -414,7 +414,7 @@ class TestIntegrator(unittest.TestCase):
         start_job_mock.assert_not_called()
         self._assert_state(i._state, running=False, loop=False, last_played_url=self.DEFAULT_URL, description="Aus",
                            stop_reason="interrupted")
-        
+
     @patch("controller.integrator.Scheduler.stop_job")
     @patch("controller.integrator.Scheduler.start_job")
     @patch("controller.test_integrator.FakePlayer.get_state")
