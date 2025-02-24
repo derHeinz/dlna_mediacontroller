@@ -23,3 +23,4 @@ TODOs
 - [x] possibility to control 2 or more media renderers.
 - [X] fix bug where started_timestamp is recalculated for every song.
 - [ ] ability to search/play video also
+- [ ] allow several media servers

@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 import datetime
 
-from dlna.mediaserver import Item
+from dlna.items import Item
 
 
 @dataclass
