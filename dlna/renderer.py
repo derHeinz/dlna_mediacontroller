@@ -1,6 +1,6 @@
 from enum import Enum
 
-CAPABILITIES = Enum('Capabilities', ['audio', 'video'])
+CAPABILITIES = Enum('Capabilities', ['audio', 'video', 'image'])
 
 
 class Renderer():
