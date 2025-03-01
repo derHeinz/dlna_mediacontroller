@@ -24,6 +24,7 @@ class State():
     title: str
     artist: str
     loop: bool
+    type: str
 
     # reset current state
     running: bool
@@ -46,6 +47,7 @@ class State():
         self.title = None
         self.artist = None
         self.loop = False
+        self.type = None
 
         # reset current state
         self.running = False

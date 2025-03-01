@@ -2,15 +2,17 @@ import unittest
 import xml.etree.ElementTree as ET
 from dlna.items import Item
 
+
 def clean(txt):
     return txt.replace("  ", " ").replace("\t", "").replace("\n", "")
+
 
 class TestItem(unittest.TestCase):
 
     EXAMPLE_ITEM = '''
-    <ns0:item xmlns:dc="http://purl.org/dc/elements/1.1/" 
-     xmlns:ns0="urn:schemas-upnp-org:metadata-1-0/DIDL-Lite/" 
-     xmlns:ns2="urn:schemas-upnp-org:metadata-1-0/upnp/" 
+    <ns0:item xmlns:dc="http://purl.org/dc/elements/1.1/"
+     xmlns:ns0="urn:schemas-upnp-org:metadata-1-0/DIDL-Lite/"
+     xmlns:ns2="urn:schemas-upnp-org:metadata-1-0/upnp/"
      xmlns:ns3="urn:schemas-dlna-org:metadata-1-0/" id="64$1$1$D$4$F$E$7" parentID="64$1$1$D$4$F$E" restricted="1">
         <dc:title>I Was Born to Love You</dc:title>
         <ns2:class>object.item.audioItem.musicTrack</ns2:class>
@@ -21,7 +23,7 @@ class TestItem(unittest.TestCase):
         <ns2:genre>Rock</ns2:genre>
         <ns2:originalTrackNumber>6</ns2:originalTrackNumber>
         <ns0:res size="4637479" duration="0:04:49.810" bitrate="128000"
-         sampleFrequency="44100" nrAudioChannels="2" 
+         sampleFrequency="44100" nrAudioChannels="2"
          protocolInfo="http-get:*:audio/mpeg:DLNA.ORG_PN=MP3;DLNA.ORG_OP=01;DLNA.ORG_CI=0;DLNA.ORG_FLAGS=01700000000000000000000000000000">http://192.168.0.1:8200/MediaItems/20972.mp3</ns0:res>
         <ns2:albumArtURI ns3:profileID="JPEG_TN">http://192.168.0.1:8200/AlbumArt/804-20972.jpg</ns2:albumArtURI>
     </ns0:item>
@@ -34,7 +36,7 @@ class TestItem(unittest.TestCase):
         self.assertEqual(None, i.get_actor())
         self.assertEqual("Queen", i.get_creator())
         self.assertEqual("http://192.168.0.1:8200/MediaItems/20972.mp3", i.get_url())
-        
+
     def test_item_res(self):
         i = Item(ET.fromstring(self.EXAMPLE_ITEM))
 

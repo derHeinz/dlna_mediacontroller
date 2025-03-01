@@ -4,6 +4,7 @@ from dataclasses import dataclass
 import random
 
 from controller.data.exceptions import RequestInvalidException
+from controller.data.command import PlayCommand
 from controller.scheduler import Scheduler
 from dlna.player import State as PlayerState, TRANSPORT_STATE
 from controller.data.state import State
@@ -112,14 +113,14 @@ class TestIntegrator(unittest.TestCase):
         self.assertEqual(stop_reason, view.stop_reason)
 
     def _initial_play_url(self, integrator: Integrator, loop=False):
-        res = integrator.play(self.DEFAULT_URL, None, None, loop)
+        res = integrator.play(PlayCommand(url=self.DEFAULT_URL, artist=None, title=None, loop=loop))
         dsc = "Wiederholt " + self.DEFAULT_URL if loop else "Spielt " + self.DEFAULT_URL
         self._assert_state(integrator._state, url=self.DEFAULT_URL, last_played_url=self.DEFAULT_URL,
                            running=True, played_count=1, description=dsc, loop=loop)
         return res
 
     def _initial_play_item(self, integrator: Integrator, loop=False):  # TOOD add parameter loop!
-        res = integrator.play(None, 'must go', None, loop)
+        res = integrator.play(PlayCommand(url=None, artist=None, title='must go', loop=loop))
         desc = "Spielt " + ("Lieder mit 'must go'" if loop else self.DEFAULT_ITEM.title + " von " + self.DEFAULT_ITEM.actor)
         self._assert_state(integrator._state, title='must go', last_played_url=self.DEFAULT_ITEM.url, loop=loop,
                            last_played_artist=self.DEFAULT_ITEM.actor, last_played_title=self.DEFAULT_ITEM.title,
@@ -147,7 +148,7 @@ class TestIntegrator(unittest.TestCase):
         i = self._testee()
 
         with self.assertRaises(RequestInvalidException):
-            i.play(None, None, None, False)
+            i.play(PlayCommand(url=None, artist=None, title=None, loop=False))
         self._assert_state(i._state, running=False)
 
     def test_pause(self):
@@ -210,7 +211,7 @@ class TestIntegrator(unittest.TestCase):
 
         player_play_mock.side_effect = OSError("test-error")
         with self.assertRaises(OSError):
-            i.play(self.DEFAULT_URL, None, None, True)
+            i.play(PlayCommand(url=self.DEFAULT_URL, artist=None, title=None, loop=True))
         self._assert_state(i._state, stop_reason="exception in play: test-error")
         scheduler_stop_mock.assert_has_calls([call(self.DEFAULT_PLAYER_NAME)])
         scheduler_start_mock.assert_not_called()
@@ -226,7 +227,7 @@ class TestIntegrator(unittest.TestCase):
 
         self._initial_play_item(i)
 
-        mediaserver_search_mock.assert_called_with(title='must go', artist=None)
+        mediaserver_search_mock.assert_called_with(title='must go')
         stop_job_mock.assert_called_with(self.DEFAULT_PLAYER_NAME)
         player_play_mock.assert_called_with(self.DEFAULT_ITEM.url, item=self.DEFAULT_ITEM)
 
@@ -239,11 +240,11 @@ class TestIntegrator(unittest.TestCase):
         # prepare mediaserver_mock
         mediaserver_search_mock.return_value = MySearchResponse([])
 
-        res = i.play(None, 'must go', None, False)
+        res = i.play(PlayCommand(url=None, artist=None, title='must go', loop=False))
         self._assert_state(i._state, stop_reason="nothing found in media server")
         self.assertEqual(res, i._state.view())
 
-        mediaserver_search_mock.assert_called_with(title='must go', artist=None)
+        mediaserver_search_mock.assert_called_with(title='must go')
         stop_job_mock.assert_called_with(self.DEFAULT_PLAYER_NAME)
         player_play_mock.assert_not_called()
 
@@ -260,7 +261,7 @@ class TestIntegrator(unittest.TestCase):
         testItem = MyItem('Show must go on', 'Queen', 'url-queen')
         mediaserver_search_mock.return_value = MySearchResponse([testItem])
 
-        res = i.play(None, 'must go', None, False)
+        res = i.play(PlayCommand(url=None, artist=None, title='must go', loop=False))
         self.assertEqual(res, i._state.view())
         self._assert_state(i._state, title='must go', last_played_url='url-queen',
                            last_played_artist='Queen', last_played_title='Show must go on',
@@ -268,7 +269,7 @@ class TestIntegrator(unittest.TestCase):
                            description="Spielt Show must go on von Queen")
         self.assertEqual(testItem, i._state.last_played_item)
 
-        mediaserver_search_mock.assert_called_with(title='must go', artist=None)
+        mediaserver_search_mock.assert_called_with(title='must go')
         scheduler_stop_mock.assert_called()
         scheduler_start_mock.assert_called()
         player_play_mock.assert_called_with('url-queen', item=testItem)
@@ -281,14 +282,14 @@ class TestIntegrator(unittest.TestCase):
         testItem = MyItem('Narcotic', 'Liquido', 'url-liquido')
         mediaserver_search_mock.return_value = MySearchResponse([testItem])
 
-        res = i.play(None, 'narco', None, False)
+        res = i.play(PlayCommand(url=None, artist=None, title='narco', loop=False))
         self._assert_state(i._state, title='narco', last_played_url='url-liquido', running=True, played_count=1,
                            description="Spielt Narcotic von Liquido", last_played_artist='Liquido',
                            last_played_title='Narcotic')
         self.assertEqual(testItem, i._state.last_played_item)
         self.assertNotEqual(None, i._state.last_played_item)
 
-        mediaserver_search_mock.assert_called_with(title='narco', artist=None)
+        mediaserver_search_mock.assert_called_with(title='narco')
         scheduler_stop_mock.assert_called()
         scheduler_start_mock.assert_called()
         player_play_mock.assert_called_with('url-liquido', item=testItem)
@@ -453,7 +454,7 @@ class TestIntegrator(unittest.TestCase):
         mediaserver_search_mock.reset_mock()
 
         # play url
-        res = i.play(self.DEFAULT_URL, None, None, False)
+        res = i.play(PlayCommand(url=self.DEFAULT_URL, artist=None, title=None, loop=False))
         self._assert_state(i._state, url=self.DEFAULT_URL, running=True, last_played_url=self.DEFAULT_URL,
                            played_count=1, description="Spielt a-track")
         self.assertEqual(res, i._state.view())
@@ -481,14 +482,14 @@ class TestIntegrator(unittest.TestCase):
         mediaserver_search_mock.reset_mock()
         mediaserver_search_mock.return_value = MySearchResponse([])
 
-        res = i.play(None, 'must go', None, False)
+        res = i.play(PlayCommand(url=None, artist=None, title='must go', loop=False))
         self._assert_state(i._state, running=False, stop_reason="nothing found in media server")
         self.assertEqual(res, i._state.view())
 
         player_play_mock.assert_not_called()
         stop_job_mock.assert_called()
         start_job_mock.assert_called()
-        mediaserver_search_mock.assert_called_with(title='must go', artist=None)
+        mediaserver_search_mock.assert_called_with(title='must go')
 
     @patch("controller.test_integrator.FakeServer.search")
     @patch("controller.integrator.Scheduler.stop_job")
@@ -506,7 +507,7 @@ class TestIntegrator(unittest.TestCase):
         stop_job_mock.reset_mock()
         mediaserver_search_mock.reset_mock()
 
-        res = i.play(self.DEFAULT_URL, None, None, False)
+        res = i.play(PlayCommand(url=self.DEFAULT_URL, artist=None, title=None, loop=False))
         self._assert_state(i._state, url=self.DEFAULT_URL, last_played_url=self.DEFAULT_URL, running=True, played_count=1,
                            description="Spielt a-track")
         self.assertEqual(res, i._state.view())

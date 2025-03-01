@@ -109,7 +109,7 @@ class PlayerDispatcher:
 
     def play(self, command: PlayCommand):
         i = self._decide_integrator(command)
-        return i.play(url=command.url, title=command.title, artist=command.artist, loop=command.loop)
+        return i.play(command)
 
     def pause(self, command: Command):
         i = self._decide_integrator(command)

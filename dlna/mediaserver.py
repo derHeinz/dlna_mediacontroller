@@ -31,7 +31,6 @@ class MediaServer():
     VIDEO = 'upnp:class derivedfrom "object.item.videoItem"'
     IMAGE = 'upnp:class derivedfrom "object.item.imageItem"'
 
-
     def __init__(self, url):
         self._url = url
 
@@ -54,14 +53,14 @@ class MediaServer():
             size_int = max_size
         else:
             raise ValueError(f"Cannot work with size: {str(max_size)}")
-        
+
         # now check whether the value is valid
         if size_int < 1:
             raise ValueError(f"Invalid size {str(size_int)}")
         return str(size_int)
 
     def search(self, title=None, artist=None, type='audio', max_size=200):
-        
+
         # size
         size_criteria = self._size_to_size_criteria(max_size)
         # type criteria

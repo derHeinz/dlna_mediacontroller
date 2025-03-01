@@ -5,6 +5,7 @@ import xml.etree.ElementTree as ET
 from dlna.mediaserver import MediaServer
 from dlna.search_responses import SearchResponse
 
+
 class TestMediaserver(unittest.TestCase):
 
     EXAMPLE_ITEM = '''
@@ -30,13 +31,12 @@ class TestMediaserver(unittest.TestCase):
         def read(self):
             return self.read_result
 
-
     @patch("dlna.dlna_helper.send_request")
     @patch("dlna.dlna_helper.create_header")
     def test_search_basic(self, create_header_mock, send_request_mock):
         create_header_mock.return_value = 'bla'
         send_request_mock.return_value = TestMediaserver.FakeResponse(self.EXAMPLE_ITEM)
-        
+
         ms = MediaServer('some-url')
         res = ms.search(title='foo')
         self.assertTrue(isinstance(res, SearchResponse))
@@ -60,7 +60,7 @@ class TestMediaserver(unittest.TestCase):
     def test_search_artist(self, create_header_mock, send_request_mock):
         create_header_mock.return_value = 'bla'
         send_request_mock.return_value = TestMediaserver.FakeResponse(self.EXAMPLE_ITEM)
-        
+
         ms = MediaServer('some-url')
         res = ms.search(artist='bar')
         self.assertTrue(isinstance(res, SearchResponse))
@@ -74,7 +74,7 @@ class TestMediaserver(unittest.TestCase):
     def test_search_sizes(self, create_header_mock, send_request_mock):
         create_header_mock.return_value = 'bla'
         send_request_mock.return_value = TestMediaserver.FakeResponse(self.EXAMPLE_ITEM)
-        
+
         ms = MediaServer('asdf')
         with self.assertRaises(ValueError):
             ms.search(title='foo', max_size=47.11)
@@ -99,9 +99,9 @@ class TestMediaserver(unittest.TestCase):
     def test_search_types(self, create_header_mock, send_request_mock):
         create_header_mock.return_value = 'bla'
         send_request_mock.return_value = TestMediaserver.FakeResponse(self.EXAMPLE_ITEM)
-        
+
         ms = MediaServer('asdf')
-       
+
         # audio
         ms.search(title='foo', type='audio')
         body = ET.fromstring(send_request_mock.call_args.args[2])

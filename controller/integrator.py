@@ -2,6 +2,7 @@ import logging
 from enum import Enum
 
 from controller.data.state import State, StateView
+from controller.data.command import PlayCommand
 from controller.scheduler import Scheduler
 from controller.data.exceptions import RequestInvalidException
 
@@ -27,12 +28,6 @@ class Integrator():
         self._state: State = State()
         self._scheduler = scheduler
 
-    def _search(self, title, artist):
-        logger.debug('searching for title="{t}" of artist="{a}"'.format(t=title, a=artist))
-        search_res = self._media_server.search(title=title, artist=artist)
-        logger.debug('Found {} items'.format(search_res.get_matches()))
-        return search_res
-
     def _play_next_track(self):
         if self._state.url is not None:
             # this mode always plays the same url
@@ -43,8 +38,19 @@ class Integrator():
             return
 
         if self._state.search_response is None:
-            search_response = self._search(self._state.title, self._state.artist)
-            self._state.search_response = search_response
+            # do the searching stuff
+            search_args = {}
+            search_args['title'] = self._state.title
+            search_args['artist'] = self._state.artist
+            search_args['type'] = self._state.type
+
+            # remove None values (and it's keys) from dictionary
+            search_args_cleaned = {k: v for k, v in search_args.items() if v is not None}
+
+            # search the media server
+            logger.debug(f"searching for {search_args_cleaned}")
+            self._state.search_response = self._media_server.search(**search_args_cleaned)
+            logger.debug('Found {} items'.format(self._state.search_response.get_matches()))
 
         if (self._state.search_response.get_matches() > 0):
             item = self._state.search_response.random_item()
@@ -123,13 +129,14 @@ class Integrator():
 
     # external methods
 
-    def play(self, url, title, artist, loop: bool) -> StateView:
+    def play(self, command: PlayCommand) -> StateView:
         logger.debug('play called')
         s: State = State()
-        s.url = url
-        s.title = title
-        s.artist = artist
-        s.loop = loop
+        s.url = command.url
+        s.title = command.title
+        s.artist = command.artist
+        s.loop = command.loop
+        s.type = command.type
 
         self._validate_state(s)
         try:

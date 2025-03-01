@@ -5,7 +5,7 @@ from dlna import dlna_helper
 class TestDLNAHelper(unittest.TestCase):
 
     def test_namespace_free_res_element(self):
-       
+
         # no content in res
         before = '''<bla:res xmlns:bla="blubb"></bla:res>'''
         after = '''<res></res>'''
