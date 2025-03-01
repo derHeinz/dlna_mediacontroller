@@ -41,5 +41,5 @@ jobs:
         pytest
     - name: Coverage
       run: |
-        coverage run --source=. --omit=*_test.py -m pytest
+        coverage run --source=. --omit=**/*/test_*.py -m pytest
         coverage report -m
