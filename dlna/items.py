@@ -25,6 +25,12 @@ class Item():
         if e is None:
             return None
         return e.text
+    
+    def get_class(self):
+        e = self._element.find('upnp:class', {'upnp': dlna_helper.NAMESPACE_UPNP})
+        if e is None:
+            return None
+        return e.text
 
     def get_url(self):
         e = self._element.find('d:res', {'d': dlna_helper.NAMESPACE_DIDL})

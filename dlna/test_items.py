@@ -35,6 +35,7 @@ class TestItem(unittest.TestCase):
         self.assertEqual("I Was Born to Love You", i.get_title())
         self.assertEqual(None, i.get_actor())
         self.assertEqual("Queen", i.get_creator())
+        self.assertEqual("object.item.audioItem.musicTrack", i.get_class())
         self.assertEqual("http://192.168.0.1:8200/MediaItems/20972.mp3", i.get_url())
 
     def test_item_res(self):

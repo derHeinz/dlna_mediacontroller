@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from time import sleep
 
 from dlna.renderer import Renderer
+from dlna.items import Item
 from dlna import dlna_helper
 
 TRANSPORT_STATE = Enum('TransportState', ['STOPPED', 'PLAYING', 'TRANSITIONING', 'PAUSED_PLAYBACK',
@@ -43,7 +44,7 @@ class Player():
             <upnp:actor>{artist}</upnp:actor>
             <upnp:author>{artist}</upnp:author>
 
-            <upnp:class>object.item.audioItem.musicTrack</upnp:class>
+            <upnp:class>{class_or_type}</upnp:class>
             {res}
         </item>
     </DIDL-Lite>
@@ -86,13 +87,18 @@ class Player():
         if (self._renderer.include_metadata()):
             if ('item' in kwargs):
                 # uses mediaserver's item
-                item = kwargs['item']
-                prepared_metadata = self.META_DATA.format(id=uuid.uuid4(), parentid=uuid.uuid4(), title=item.get_title(),
-                                                          artist=item.get_actor(), res=item.get_res_as_string())
-                encoded_meta = self._escape(self._clean(prepared_metadata))
+                item: Item = kwargs['item']
+                meta = self.META_DATA.format(id=uuid.uuid4(), parentid=uuid.uuid4(), title=item.get_title(),
+                                             artist=item.get_actor(), class_or_type=item.get_class(),
+                                             res=item.get_res_as_string())
+                encoded_meta = self._escape(self._clean(meta))
+                if logger.isEnabledFor(logging.DEBUG):
+                    metadata_xml = ET.fromstring(dlna_helper.XML_HEADER + meta)
+                    logger.debug(f"metadata as xml {ET.tostring(metadata_xml, encoding='utf-8', method='xml')}")
+
             elif ('metadata_raw' in kwargs):
                 encoded_meta = kwargs['metadata_raw']
-        # urllib.parse.quote(meta)
+
         prepare_body = self.PREPARE_BODY.format(url=url_to_play, metadata=encoded_meta)
         self._send_request('SetAVTransportURI', prepare_body)
 
@@ -169,5 +175,9 @@ class Player():
 
     def _send_request(self, header_keyword, body):
         device_url = self._renderer.get_url()
-        header = dlna_helper.create_header('AVTransport', header_keyword)
-        return dlna_helper.send_request(device_url, header, body)
+        headers = dlna_helper.create_header('AVTransport', header_keyword)
+        if logger.isEnabledFor(logging.DEBUG):
+            logger.debug("Sending player request: ")
+            logger.debug(f"body: {body}")
+            logger.debug(f"headers: {headers}")
+        return dlna_helper.send_request(device_url, headers, body)
