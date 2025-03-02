@@ -41,15 +41,22 @@ def create_players(renderers_config: dict) -> list[Player]:
 
 
 def validate_players(players: list[Player]):
-    names = []
+    if players is None or len(players) < 1:
+        raise ValueError(f"Players invalid.")
+
+    if len(players) < 2:
+        return
+
+    visited_names = []
     for p in players:
-        p_name = p.get_name()
-        if p_name in names:
-            raise Exception(f"configuration contains two players with name {p_name}")
-        names.append(p_name)
+        p_names = p.get_renderer().get_known_names()
+        for p_name in p_names:
+            if p_name in visited_names:
+                raise ValueError(f"configuration contains two players with name {p_name}")
+        visited_names.extend(p_names)
 
 
-def create_media_servers(media_servers_config: dict):
+def create_media_servers(media_servers_config: dict) -> list[MediaServer]:
     res = []
     for m_config in media_servers_config:
         server = MediaServer(m_config.get('url'))

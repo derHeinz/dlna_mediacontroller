@@ -5,8 +5,8 @@ from dlna import dlna_helper
 # TODO str(item) should yield something nice
 class Item():
 
-    def __init__(self, item_element):
-        self._element = item_element
+    def __init__(self, item_element: ET.Element):
+        self._element: ET.Element = item_element
 
     def get_title(self):
         e = self._element.find('dc:title', {'dc': dlna_helper.NAMESPACE_DC})
@@ -16,6 +16,18 @@ class Item():
 
     def get_actor(self):
         e = self._element.find('upnp:actor', {'upnp': dlna_helper.NAMESPACE_UPNP})
+        if e is None:
+            return None
+        return e.text
+    
+    def get_artist(self):
+        e = self._element.find('upnp:artist', {'upnp': dlna_helper.NAMESPACE_UPNP})
+        if e is None:
+            return None
+        return e.text
+    
+    def get_author(self):
+        e = self._element.find('upnp:author', {'upnp': dlna_helper.NAMESPACE_UPNP})
         if e is None:
             return None
         return e.text
