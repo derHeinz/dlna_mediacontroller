@@ -32,23 +32,19 @@ class Player():
     META_DATA = '''
     <DIDL-Lite xmlns="urn:schemas-upnp-org:metadata-1-0/DIDL-Lite/"
     xmlns:upnp="urn:schemas-upnp-org:metadata-1-0/upnp/"
-    xmlns:dc="http://purl.org/dc/elements/1.1/"
-    xmlns:dlna="urn:schemas-dlna-org:metadata-1-0/"
-    xmlns:sec="http://www.sec.co.kr/"
-    xmlns:pv="http://www.pv.com/pvns/">
+    xmlns:dc="http://purl.org/dc/elements/1.1/">
         <item id="{id}" parentID="{parentid}" restricted="1">
-            <dc:title>{title}</dc:title>
-
-            <dc:creator>{artist}</dc:creator>
-            <upnp:artist>{artist}</upnp:artist>
-            <upnp:actor>{artist}</upnp:actor>
-            <upnp:author>{artist}</upnp:author>
-
-            <upnp:class>{class_or_type}</upnp:class>
-            {res}
+            {inner_info}
         </item>
     </DIDL-Lite>
     '''
+    TITLE_DATA = '<dc:title>{value}</dc:title>'
+    CREATOR_DATA = '<dc:creator>{value}</dc:creator>'
+    AUTHOR_DATA = '<upnp:author>{value}</upnp:author>'
+    ACTOR_DATA = '<upnp:actor>{value}</upnp:actor>'
+    ARTIST_DATA = '<upnp:artist>{value}</upnp:artist>'
+    CLASS_DATA = '<upnp:class>{value}</upnp:class>'
+    
 
     # play should get the variable: speed
     PLAY_BODY = dlna_helper.XML_HEADER + '<s:Envelope s:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/" xmlns:s="http://schemas.xmlsoap.org/soap/envelope/"><s:Body><u:Play xmlns:u="urn:schemas-upnp-org:service:AVTransport:1"><InstanceID>0</InstanceID><Speed>1</Speed></u:Play></s:Body></s:Envelope>'
@@ -80,6 +76,11 @@ class Player():
 
     def pause(self):
         return self._send_request('Pause', self.PAUSE_BODY)
+    
+    def _add_to_content(self, xml_tag_data, value):
+        if value is not None:
+            return xml_tag_data.format(value=value)
+        return ''
 
     def play(self, url_to_play, **kwargs):
         # prepare metadata
@@ -87,10 +88,18 @@ class Player():
         if (self._renderer.include_metadata()):
             if ('item' in kwargs):
                 # uses mediaserver's item
-                item: Item = kwargs['item']
-                meta = self.META_DATA.format(id=uuid.uuid4(), parentid=uuid.uuid4(), title=item.get_title(),
-                                             artist=item.get_actor(), class_or_type=item.get_class(),
-                                             res=item.get_res_as_string())
+                i: Item = kwargs['item']
+
+                inner_info = ''
+                inner_info += self._add_to_content(self.TITLE_DATA, i.get_title())
+                inner_info += self._add_to_content(self.CREATOR_DATA, i.get_creator())
+                inner_info += self._add_to_content(self.AUTHOR_DATA, i.get_author())
+                inner_info += self._add_to_content(self.ACTOR_DATA, i.get_actor())
+                inner_info += self._add_to_content(self.ARTIST_DATA, i.get_artist())
+                inner_info += self._add_to_content(self.CLASS_DATA, i.get_class())
+                inner_info += i.get_res_as_string()
+
+                meta = self.META_DATA.format(id=uuid.uuid4(), parentid=uuid.uuid4(), inner_info=inner_info)
                 encoded_meta = self._escape(self._clean(meta))
                 if logger.isEnabledFor(logging.DEBUG):
                     metadata_xml = ET.fromstring(dlna_helper.XML_HEADER + meta)
