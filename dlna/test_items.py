@@ -62,7 +62,7 @@ class TestItem(unittest.TestCase):
         self.assertEqual(None, i.get_creator())
         self.assertEqual(None, i.get_artist())
         self.assertEqual(None, i.get_author())
-    
+
         self.assertEqual("http://127.0.0.1/MediaItems/20972.mp3", i.get_url())
 
     def test_item_res(self):

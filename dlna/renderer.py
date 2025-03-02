@@ -8,7 +8,7 @@ class Renderer():
 
     def __init__(self, name: str, aliases: list[str], url: str, mac: str, capabilities: list[str], send_metadata: bool):
         self._name: str = name
-        self._aliases: list[str]  = aliases
+        self._aliases: list[str] = aliases
         self._control_url: str = url
         self._mac: str = mac
         self._capabilities: list[str] = capabilities

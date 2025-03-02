@@ -44,7 +44,6 @@ class Player():
     ACTOR_DATA = '<upnp:actor>{value}</upnp:actor>'
     ARTIST_DATA = '<upnp:artist>{value}</upnp:artist>'
     CLASS_DATA = '<upnp:class>{value}</upnp:class>'
-    
 
     # play should get the variable: speed
     PLAY_BODY = dlna_helper.XML_HEADER + '<s:Envelope s:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/" xmlns:s="http://schemas.xmlsoap.org/soap/envelope/"><s:Body><u:Play xmlns:u="urn:schemas-upnp-org:service:AVTransport:1"><InstanceID>0</InstanceID><Speed>1</Speed></u:Play></s:Body></s:Envelope>'
@@ -76,7 +75,7 @@ class Player():
 
     def pause(self):
         return self._send_request('Pause', self.PAUSE_BODY)
-    
+
     def _add_to_content(self, xml_tag_data, value):
         if value is not None:
             return xml_tag_data.format(value=value)

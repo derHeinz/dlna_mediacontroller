@@ -6,8 +6,10 @@ from main import create_players, validate_players, setup_logging, create_media_s
 class TestMain(unittest.TestCase):
 
     RENDERER_CFG = [
-        {"name": "Ex 1", "aliases": ["Radio"], "url": "http://x.y.z.1:12345/AVTransport/control", "capabilities": ["audio"], "send_metadata": True },
-        {"name": "Ex 2", "aliases": ["TV"], "url": "http://x.y.z.2:12345/AVTransport/", "mac": "ab:cd:ef:12:34:56", "capabilities": ["audio", "video"], "send_metadata": True }
+        {"name": "Ex 1", "aliases": ["Radio"], "url": "http://x.y.z.1:12345/AVTransport/control",
+         "capabilities": ["audio"], "send_metadata": True},
+        {"name": "Ex 2", "aliases": ["TV"], "url": "http://x.y.z.2:12345/AVTransport/",
+         "mac": "ab:cd:ef:12:34:56", "capabilities": ["audio", "video"], "send_metadata": True}
     ]
 
     def test_run_setup_logging(self):
@@ -25,7 +27,7 @@ class TestMain(unittest.TestCase):
 
         with self.assertRaises(ValueError):
             validate_players(None)
-        
+
         with self.assertRaises(ValueError):
             validate_players([])
 

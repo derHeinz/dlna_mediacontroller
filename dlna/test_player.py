@@ -24,11 +24,11 @@ class TestPlayer(unittest.TestCase):
 
         def include_metadata(self):
             return False
-        
+
     class FakeRendererWithMetadata(FakeRenderer):
 
         def include_metadata(self):
-            return True 
+            return True
 
     class FakeResponse:
 
@@ -173,7 +173,7 @@ class TestPlayer(unittest.TestCase):
             call(self.DEFAULT_URL, self.DEFAULT_HEADER, Player.PREPARE_BODY.format(url=track_uri, metadata='')),
             call(self.DEFAULT_URL, self.DEFAULT_HEADER, Player.TRANS_INFO_BODY),
             call(self.DEFAULT_URL, self.DEFAULT_HEADER, Player.PLAY_BODY)])
-        
+
     VALID_ITEMS = """
     <DIDL-Lite xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:upnp="urn:schemas-upnp-org:metadata-1-0/upnp/" xmlns="urn:schemas-upnp-org:metadata-1-0/DIDL-Lite/" \n xmlns:dlna="urn:schemas-dlna-org:metadata-1-0/">
         <item id="64$1$1$12$2E$5" parentID="64$1$1$12$2E" restricted="1">
@@ -204,12 +204,12 @@ class TestPlayer(unittest.TestCase):
         </item>
     </DIDL-Lite>
     """
-    
+
     @patch("dlna.dlna_helper.send_request")
     @patch("dlna.dlna_helper.create_header")
     def test_play_with_audio_item(self, create_header_mock: MagicMock, send_request_mock: MagicMock):
         p = Player(TestPlayer.FakeRendererWithMetadata())
-        
+
         root_el = ET.fromstring(XML_HEADER + unescape(self.VALID_ITEMS))
         first_item = root_el.find('r:item', {'r': 'urn:schemas-upnp-org:metadata-1-0/DIDL-Lite/'})
         i = Item(first_item)
@@ -247,12 +247,12 @@ class TestPlayer(unittest.TestCase):
         send_request_mock.assert_has_calls([
             call(self.DEFAULT_URL, self.DEFAULT_HEADER, Player.TRANS_INFO_BODY),
             call(self.DEFAULT_URL, self.DEFAULT_HEADER, Player.PLAY_BODY)])
-        
+
     @patch("dlna.dlna_helper.send_request")
     @patch("dlna.dlna_helper.create_header")
     def test_play_with_video_item(self, create_header_mock: MagicMock, send_request_mock: MagicMock):
         p = Player(TestPlayer.FakeRendererWithMetadata())
-        
+
         root_el = ET.fromstring(XML_HEADER + unescape(self.VALID_ITEMS))
         first_item = root_el.findall('r:item', {'r': 'urn:schemas-upnp-org:metadata-1-0/DIDL-Lite/'})[3]
         i = Item(first_item)
