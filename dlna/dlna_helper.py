@@ -16,8 +16,8 @@ def create_header(type, method):
             }
 
 
-def send_request(url, header, body):
-    req = Request(url, body.encode('utf-8'), header)
+def send_request(url, headers, body):
+    req = Request(url, body.encode('utf-8'), headers)
     return urlopen(req)
 
 

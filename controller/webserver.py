@@ -7,9 +7,10 @@ from flask import Flask, make_response, request
 from werkzeug.serving import make_server
 from threading import Thread
 
-from controller.integrator import Integrator
+from controller.player_dispatcher import PlayerDispatcher
 from controller.appinfo import AppInfo
-from controller.exceptions import RequestInvalidException
+from controller.data.exceptions import RequestInvalidException, RequestCannotBeHandeledException
+from controller.data.command import Command, PlayCommand
 
 logger = logging.getLogger(__file__)
 
@@ -18,7 +19,7 @@ class WebServer(Thread):
 
     NAME = "DLNA Media Controller"
 
-    def __init__(self, config, integrator: Integrator, appinfo: AppInfo):
+    def __init__(self, config, dispatcher: PlayerDispatcher, appinfo: AppInfo):
         """Create a new instance of the flask app"""
         super(WebServer, self).__init__()
 
@@ -28,7 +29,7 @@ class WebServer(Thread):
         self.app.config['webserver_cors_allow'] = config.get('webserver_cors_allow', False)
         self.app.app_context().push()
 
-        self.integrator: Integrator = integrator
+        self.dispatcher: PlayerDispatcher = dispatcher
         self.appinfo = appinfo
 
         self._server = make_server(host='0.0.0.0', port=self.app.config['port'], app=self.app, threaded=True)
@@ -78,35 +79,56 @@ class WebServer(Thread):
         return self._make_response_and_add_cors("shutdown hereafter", 200)
 
     def play(self):
-        json = request.json
-
-        url = json.get('url', None)
-        title = json.get('title', None)
-        artist = json.get('artist', None)
-        loop = json.get('loop', False)
-        logger.debug(f"extracted all information url:{url}, title:{title}, artist:{artist}, loop:{loop} ")
+        logger.debug("in play")
+        content = request.json
+        play_command = PlayCommand(url=content.get('url'),
+                                   artist=content.get('artist'),
+                                   title=content.get('title'),
+                                   target=content.get('target'),
+                                   type=content.get('type'),
+                                   loop=content.get('loop', False))
+        logger.debug(f"extracted information {str(play_command)}")
 
         try:
-            state = self.integrator.play(url, title, artist, loop)
+            state = self.dispatcher.play(play_command)
             if (state.last_played_url is None):
                 return self._make_response_and_add_cors("Kein passenden Titel gefunden", 404)
 
             return self._make_response_and_add_cors(jsonify(state), 200)
-        except RequestInvalidException as rie:
-            logger.info(rie)
-            return self._make_response_and_add_cors("Fehler", 400)
+        except RequestInvalidException as e:
+            logger.exception(e)
+            return self._make_response_and_add_cors("Fehleingabe", 400)
+        except RequestCannotBeHandeledException as e:
+            logger.exception(e)
+            return self._make_response_and_add_cors(e.msg, 500)
+        except Exception as e:
+            logger.exception(e)
+            return self._make_response_and_add_cors("Fehler", 500)  # might also be 4xx
+
+    def _commandable_method(self, func):
+        command = None
+        if request.is_json:
+            content = request.json
+            command = Command(content.get('target'))
+
+        try:
+            res = func(command)
+            return self._make_response_and_add_cors(jsonify(res), 200)
+        except RequestCannotBeHandeledException as e:
+            logger.error(e)
+            return self._make_response_and_add_cors(e.msg, 500)
         except Exception as e:
             logger.error(e)
             return self._make_response_and_add_cors("Fehler", 500)  # might also be 4xx
 
     def stop(self):
-        return self._make_response_and_add_cors(jsonify(self.integrator.stop()), 200)
+        return self._commandable_method(self.dispatcher.stop)
 
     def pause(self):
-        return self._make_response_and_add_cors(jsonify(self.integrator.pause()), 200)
+        return self._commandable_method(self.dispatcher.pause)
 
     def current_state(self):
-        return self._make_response_and_add_cors(jsonify(self.integrator.state.view()), 200)
+        return self._commandable_method(self.dispatcher.state)
 
     def info(self):
         return self.appinfo.get()

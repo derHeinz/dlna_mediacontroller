@@ -17,8 +17,10 @@ It is somehow interconnected to these other projects of mine:
 TODOs
 - [X] has a /info endpoint to see config
 - [X] should also observe "non-looping" playback, because it otherways thinks it's always running!
-- [X] play should return a "description" describing the current state (e.g. 'spiele Lieder von Queen')
-- [X] add started_timestamp to /state endpoint to see when the command was invoked
+- [X] play should return a "description" describing the current state (e.g. 'spiele Lieder von Queen').
+- [X] add started_timestamp to /state endpoint to see when the command was invoked.
 - [X] add exit reason for better understanding.
-- [ ] possibility to control 2 or more media renderers
-- [X] fix bug where started_timestamp is recalculated for every song
+- [x] possibility to control 2 or more media renderers.
+- [X] fix bug where started_timestamp is recalculated for every song.
+- [ ] ability to search/play video also
+- [ ] allow several media servers

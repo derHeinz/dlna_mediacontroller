@@ -10,7 +10,7 @@ logger = logging.getLogger(__file__)
 class Scheduler():
 
     scheduler: BaseScheduler = None
-    JOB_NAME = "Media Observer"
+    JOB_NAME_PREFIX = "Media_Observer_"
 
     def start(self, blocking=False):
         logger.debug("starting scheduler")
@@ -21,14 +21,17 @@ class Scheduler():
 
         self.scheduler.start()
 
-    def start_job(self, process_to_run):
-        logger.debug("starting observer job")
-        trig = CronTrigger(second='*/10')  # (minute='*/1') # /5
-        self.scheduler.add_job(id=self.JOB_NAME, func=process_to_run, trigger=trig)
+    def _job_name(self, name: str):
+        return self.JOB_NAME_PREFIX + name
 
-    def stop_job(self):
-        job = self.scheduler.get_job(self.JOB_NAME)
+    def start_job(self, name: str, process_to_run):
+        logger.debug(f"starting observer job for {name}")
+        trig = CronTrigger(second='*/10')
+        self.scheduler.add_job(id=self._job_name(name), name=self._job_name(name), func=process_to_run, trigger=trig)
+
+    def stop_job(self, name: str):
+        job = self.scheduler.get_job(self._job_name(name))
         if job is None:
             return
-        logger.debug("stopping observer job")
-        self.scheduler.remove_job(self.JOB_NAME)
+        logger.debug(f"stopping observer job for {name}")
+        self.scheduler.remove_job(self._job_name(name))
