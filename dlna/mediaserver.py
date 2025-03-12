@@ -13,8 +13,7 @@ class MediaServer():
         <SOAP-ENV:Body>
             <m:Search xmlns:m="urn:schemas-upnp-org:service:ContentDirectory:1">
                 <ContainerID xmlns:dt="urn:schemas-microsoft-com:datatypes" dt:dt="string">0</ContainerID>
-                <SearchCriteria xmlns:dt="urn:schemas-microsoft-com:datatypes" dt:dt="string">
-                 {type} and @refID exists false {criteria}</SearchCriteria>
+                <SearchCriteria xmlns:dt="urn:schemas-microsoft-com:datatypes" dt:dt="string">{type} and @refID exists false {criteria}</SearchCriteria>
                 <Filter xmlns:dt="urn:schemas-microsoft-com:datatypes" dt:dt="string">*</Filter>
                 <StartingIndex xmlns:dt="urn:schemas-microsoft-com:datatypes" dt:dt="ui4">0</StartingIndex>
                 <RequestedCount xmlns:dt="urn:schemas-microsoft-com:datatypes" dt:dt="ui4">{max_size}</RequestedCount>
@@ -72,6 +71,8 @@ class MediaServer():
         if (not self._is_blank(artist)):
             search_query_criteria += (self.ARTIST_PATTERN.format(q=artist))
         query = self.QUERY.format(criteria=search_query_criteria, type=type_criteria, max_size=size_criteria)
+        if logger.isEnabledFor(logging.DEBUG):
+            logger.debug(f"query string: {query}")
         response = self._send_request(self._create_header(), query)
         return SearchResponse(response.read().decode("utf-8"))
 

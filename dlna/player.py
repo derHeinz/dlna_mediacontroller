@@ -59,6 +59,11 @@ class Player():
     # should get the variabl: url and metadata
     PREPARE_NEXT_BODY = '<?xml version="1.0" encoding="utf-8" standalone="yes"?>\n<s:Envelope s:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/" xmlns:s="http://schemas.xmlsoap.org/soap/envelope/"><s:Body><u:SetAVTransportURI xmlns:u="urn:schemas-upnp-org:service:AVTransport:1"><InstanceID>0</InstanceID><NextURI>{url}</NextURI><NextURIMetaData>{metadata}</NextURIMetaData></u:SetAVTransportURI></s:Body></s:Envelope>'
 
+    GERMAN_CHAR_MAP = {ord('ä'):'ae', ord('Ä'):'Ae', 
+                       ord('ö'):'oe', ord('Ö'):'Oe', 
+                       ord('ü'):'ue', ord('Ü'):'Ue', 
+                       ord('ß'):'ss'}
+
     def __init__(self, renderer: Renderer):
         self._renderer: Renderer = renderer
 
@@ -78,7 +83,8 @@ class Player():
 
     def _add_to_content(self, xml_tag_data, value):
         if value is not None:
-            return xml_tag_data.format(value=value)
+            recoded_value = value.translate(self.GERMAN_CHAR_MAP)
+            return xml_tag_data.format(value=recoded_value)
         return ''
 
     def play(self, url_to_play, **kwargs):
