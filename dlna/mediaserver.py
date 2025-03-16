@@ -17,8 +17,7 @@ class MediaServer():
                 <Filter xmlns:dt="urn:schemas-microsoft-com:datatypes" dt:dt="string">*</Filter>
                 <StartingIndex xmlns:dt="urn:schemas-microsoft-com:datatypes" dt:dt="ui4">0</StartingIndex>
                 <RequestedCount xmlns:dt="urn:schemas-microsoft-com:datatypes" dt:dt="ui4">{max_size}</RequestedCount>
-                <SortCriteria xmlns:dt="urn:schemas-microsoft-com:datatypes" dt:dt="string">
-                 +upnp:artist,+upnp:album,+upnp:originalTrackNumber,+dc:title</SortCriteria>
+                <SortCriteria xmlns:dt="urn:schemas-microsoft-com:datatypes" dt:dt="string">+upnp:artist,+upnp:album,+upnp:originalTrackNumber,+dc:title</SortCriteria>
             </m:Search>
         </SOAP-ENV:Body>
     </SOAP-ENV:Envelope>

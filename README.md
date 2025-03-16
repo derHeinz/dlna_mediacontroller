@@ -21,3 +21,5 @@ TODOs
 - [x] possibility to control 2 or more media renderers.
 - [x] ability to search/play video also
 - [ ] allow several media servers
+- [ ] handle (connection) errors when communicating to player (get_state, play, pause, stop)
+- [ ] handle (connection) errors when communicating to mediaserver -> and return text "cannot find on mediaserver" or sth.
