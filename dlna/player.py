@@ -59,10 +59,10 @@ class Player():
     # should get the variabl: url and metadata
     PREPARE_NEXT_BODY = '<?xml version="1.0" encoding="utf-8" standalone="yes"?>\n<s:Envelope s:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/" xmlns:s="http://schemas.xmlsoap.org/soap/envelope/"><s:Body><u:SetAVTransportURI xmlns:u="urn:schemas-upnp-org:service:AVTransport:1"><InstanceID>0</InstanceID><NextURI>{url}</NextURI><NextURIMetaData>{metadata}</NextURIMetaData></u:SetAVTransportURI></s:Body></s:Envelope>'
 
-    GERMAN_CHAR_MAP = {ord('ä'):'ae', ord('Ä'):'Ae', 
-                       ord('ö'):'oe', ord('Ö'):'Oe', 
-                       ord('ü'):'ue', ord('Ü'):'Ue', 
-                       ord('ß'):'ss'}
+    GERMAN_CHAR_MAP = {ord('ä'): 'ae', ord('Ä'): 'Ae',
+                       ord('ö'): 'oe', ord('Ö'): 'Oe',
+                       ord('ü'): 'ue', ord('Ü'): 'Ue',
+                       ord('ß'): 'ss'}
 
     def __init__(self, renderer: Renderer):
         self._renderer: Renderer = renderer
@@ -120,7 +120,7 @@ class Player():
         self._wait_for_transport_state([TRANSPORT_STATE.STOPPED, TRANSPORT_STATE.PLAYING, TRANSPORT_STATE.PAUSED_PLAYBACK])
 
         # play SOAP message
-        return self._send_request('Play', self.PLAY_BODY)
+        self._send_request('Play', self.PLAY_BODY)
 
     def get_state(self) -> State:
         position_info = self._position_info()
@@ -136,13 +136,13 @@ class Player():
 
     # internal methods
 
-    def _escape(self, str):
+    def _escape(self, str: str):
         str = str.replace("&", "&amp;")
         str = str.replace("<", "&lt;")
         str = str.replace(">", "&gt;")
         return str
 
-    def _clean(self, str):
+    def _clean(self, str: str):
         result = str.strip()
         result = " ".join(result.split())
         return result

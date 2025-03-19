@@ -6,10 +6,11 @@ CAPABILITIES = Enum('Capabilities', ['audio', 'video', 'image'])
 class Renderer():
     '''Holder for meta-information about a device capable of playing DLNA/UPNP'''
 
-    def __init__(self, name: str, aliases: list[str], url: str, mac: str, capabilities: list[str], send_metadata: bool):
+    def __init__(self, name: str, aliases: list[str], url: str, device_description_url: str, mac: str, capabilities: list[str], send_metadata: bool):
         self._name: str = name
         self._aliases: list[str] = aliases
         self._control_url: str = url
+        self._device_description_url: str = device_description_url
         self._mac: str = mac
         self._capabilities: list[str] = capabilities
         self._send_metadata: bool = send_metadata
@@ -25,6 +26,9 @@ class Renderer():
 
     def get_url(self) -> str:
         return self._control_url
+    
+    def get_device_description_url(self) -> str:
+        return self._device_description_url
 
     def get_known_names(self) -> list[str]:
         res = []

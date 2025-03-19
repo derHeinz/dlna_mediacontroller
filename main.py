@@ -34,8 +34,9 @@ def load_config():
 def create_players(renderers_config: dict) -> list[Player]:
     res = []
     for r_config in renderers_config:
-        renderer = Renderer(r_config.get('name'), r_config.get('aliases'), r_config.get('url'),
-                            r_config.get('mac'), r_config.get('capabilities'), r_config.get('send_metadata'))
+        renderer = Renderer(name=r_config.get('name'), aliases=r_config.get('aliases'), url=r_config.get('url'),
+                            device_description_url=r_config.get('device_description_url'), mac=r_config.get('mac'),
+                            capabilities=r_config.get('capabilities'), send_metadata=r_config.get('send_metadata'))
         res.append(Player(renderer))
     return res
 
