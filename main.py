@@ -35,15 +35,15 @@ def create_players(renderers_config: dict) -> list[Player]:
     res = []
     for r_config in renderers_config:
         renderer = Renderer(name=r_config.get('name'), aliases=r_config.get('aliases'), url=r_config.get('url'),
-                            device_description_url=r_config.get('device_description_url'), mac=r_config.get('mac'),
-                            capabilities=r_config.get('capabilities'), send_metadata=r_config.get('send_metadata'))
+                            mac=r_config.get('mac'), capabilities=r_config.get('capabilities'),
+                            send_metadata=r_config.get('send_metadata'))
         res.append(Player(renderer))
     return res
 
 
 def validate_players(players: list[Player]):
     if players is None or len(players) < 1:
-        raise ValueError(f"Players invalid.")
+        raise ValueError("Players invalid.")
 
     if len(players) < 2:
         return

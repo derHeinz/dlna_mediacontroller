@@ -95,84 +95,68 @@ class TestPlayer(unittest.TestCase):
         self.assertEqual('FakeRenderer', p.get_name())
         self.assertEqual(r, p.get_renderer())
 
-    @patch("dlna.dlna_helper.send_request")
-    @patch("dlna.dlna_helper.create_header")
-    def test_stop(self, create_header_mock, send_request_mock):
+    @patch("upnpclient.Device")
+    def test_stop(self, device):
         r = TestPlayer.FakeRenderer()
         p = Player(r)
-
-        create_header_mock.return_value = 'bla'
 
         p.stop()
 
-        create_header_mock.assert_called_with('AVTransport', 'Stop')
-        send_request_mock.assert_called_with('url', 'bla', Player.STOP_BODY)
+        device.assert_has_calls([
+            call(r.get_url()),
+            call().AVTransport.Stop(InstanceID=0)
+        ])
 
-    @patch("dlna.dlna_helper.send_request")
-    @patch("dlna.dlna_helper.create_header")
-    def test_pause(self, create_header_mock, send_request_mock):
+    @patch("upnpclient.Device")
+    def test_pause(self, device):
         r = TestPlayer.FakeRenderer()
         p = Player(r)
-
-        create_header_mock.return_value = self.DEFAULT_HEADER
 
         p.pause()
 
-        create_header_mock.assert_called_with('AVTransport', 'Pause')
-        send_request_mock.assert_called_with(self.DEFAULT_URL, self.DEFAULT_HEADER, Player.PAUSE_BODY)
+        device.assert_has_calls([
+            call(r.get_url()),
+            call().AVTransport.Pause(InstanceID=0)
+        ])
 
-    @patch("dlna.dlna_helper.send_request")
-    @patch("dlna.dlna_helper.create_header")
-    def test_get_state(self, create_header_mock, send_request_mock):
+    @patch("upnpclient.Device")
+    def test_get_state(self, device):
         r = TestPlayer.FakeRenderer()
         p = Player(r)
 
-        create_header_mock.return_value = self.DEFAULT_HEADER
-
-        fake_pos_info = TestPlayer.FakeResponse.create_position_info('a-track', 0)
-        fake_transport_info = TestPlayer.FakeResponse.create_transport_info('NO_MEDIA_PRESENT')
-        send_request_mock.side_effect = [fake_pos_info, fake_transport_info]
+        device.return_value.AVTransport.GetPositionInfo.return_value = {'RelCount': '0'}
+        device.return_value.AVTransport.GetTransportInfo.return_value = {'CurrentTransportState': 'NO_MEDIA_PRESENT'}
+        device.return_value.AVTransport.GetMediaInfo.return_value = {'CurrentURI': 'a-track', 'NextURI': 'b-track'}
 
         res = p.get_state()
         self.assertEqual(TRANSPORT_STATE.NO_MEDIA_PRESENT, res.transport_state)
         self.assertEqual('a-track', res.current_url)
         self.assertEqual(0, res.progress_count)
+        self.assertEqual('b-track', res.next_url)
 
-        create_header_mock.assert_has_calls([
-            call('AVTransport', 'GetPositionInfo'),
-            call('AVTransport', 'GetTransportInfo')])
+        device.assert_has_calls([
+            call(r.get_url()),
+            call().AVTransport.GetPositionInfo(InstanceID=0),
+            call().AVTransport.GetTransportInfo(InstanceID=0),
+            call().AVTransport.GetMediaInfo(InstanceID=0)
+        ])
 
-        send_request_mock.assert_has_calls([
-            call(self.DEFAULT_URL, self.DEFAULT_HEADER, Player.POS_INFO_BODY),
-            call(self.DEFAULT_URL, self.DEFAULT_HEADER, Player.TRANS_INFO_BODY)])
-
-    @patch("dlna.dlna_helper.send_request")
-    @patch("dlna.dlna_helper.create_header")
-    def test_play(self, create_header_mock, send_request_mock):
+    @patch("upnpclient.Device")
+    def test_play(self, device):
         r = TestPlayer.FakeRenderer()
         p = Player(r)
 
+        device.return_value.AVTransport.GetTransportInfo.return_value = {'CurrentTransportState': 'STOPPED'}
+
         track_uri = 'track-uri'
-
-        create_header_mock.return_value = self.DEFAULT_HEADER
-
-        send_request_mock.side_effect = [
-            None,  # SetAVTransportURI response is not used!
-            TestPlayer.FakeResponse.create_transport_info('STOPPED'),
-            None  # Play response not used
-        ]
 
         p.play(track_uri)
 
-        create_header_mock.assert_has_calls([
-            call('AVTransport', 'SetAVTransportURI'),
-            call('AVTransport', 'GetTransportInfo'),
-            call('AVTransport', 'Play')])
-
-        send_request_mock.assert_has_calls([
-            call(self.DEFAULT_URL, self.DEFAULT_HEADER, Player.PREPARE_BODY.format(url=track_uri, metadata='')),
-            call(self.DEFAULT_URL, self.DEFAULT_HEADER, Player.TRANS_INFO_BODY),
-            call(self.DEFAULT_URL, self.DEFAULT_HEADER, Player.PLAY_BODY)])
+        device.assert_has_calls([
+            call(r.get_url()),
+            call().AVTransport.SetAVTransportURI(InstanceID=0, CurrentURI=track_uri, CurrentURIMetaData=None),
+            call().AVTransport.GetTransportInfo(InstanceID=0),
+        ])
 
     VALID_ITEMS = """
     <DIDL-Lite xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:upnp="urn:schemas-upnp-org:metadata-1-0/upnp/" xmlns="urn:schemas-upnp-org:metadata-1-0/DIDL-Lite/" \n xmlns:dlna="urn:schemas-dlna-org:metadata-1-0/">
@@ -205,10 +189,10 @@ class TestPlayer(unittest.TestCase):
     </DIDL-Lite>
     """
 
-    @patch("dlna.dlna_helper.send_request")
-    @patch("dlna.dlna_helper.create_header")
-    def test_play_with_audio_item(self, create_header_mock: MagicMock, send_request_mock: MagicMock):
-        p = Player(TestPlayer.FakeRendererWithMetadata())
+    @patch("upnpclient.Device")
+    def test_play_with_audio_item(self, device: MagicMock):
+        r = TestPlayer.FakeRendererWithMetadata()
+        p = Player(r)
 
         root_el = ET.fromstring(XML_HEADER + unescape(self.VALID_ITEMS))
         first_item = root_el.find('r:item', {'r': 'urn:schemas-upnp-org:metadata-1-0/DIDL-Lite/'})
@@ -216,75 +200,53 @@ class TestPlayer(unittest.TestCase):
         # check precondition
         self.assertEqual("FooBarMan", i.get_creator())
 
-        create_header_mock.return_value = self.DEFAULT_HEADER
-
-        send_request_mock.side_effect = [
-            None,  # SetAVTransportURI response is not used!
-            TestPlayer.FakeResponse.create_transport_info('STOPPED'),
-            None  # Play response not used
-        ]
+        device.return_value.AVTransport.GetTransportInfo.return_value = {'CurrentTransportState': 'STOPPED'}
 
         p.play(None, item=i)
 
-        create_header_mock.assert_has_calls([
-            call('AVTransport', 'SetAVTransportURI'),
-            call('AVTransport', 'GetTransportInfo'),
-            call('AVTransport', 'Play')])
+        device.assert_has_calls([
+            call(r.get_url()),
+            call().AVTransport.GetTransportInfo(InstanceID=0),
+            call().AVTransport.Play(InstanceID=0, Speed='1'),
+        ], any_order=True)
+        set_av_transport_info_call_args = device.mock_calls[1][2]
 
-        # prepare body
-        self.assertEqual(self.DEFAULT_URL, send_request_mock.mock_calls[0].args[0])
-        self.assertEqual(self.DEFAULT_HEADER, send_request_mock.mock_calls[0].args[1])
         # check third argument
-        xml_content = send_request_mock.mock_calls[0].args[2]
+        xml_content = set_av_transport_info_call_args.get('CurrentURIMetaData')
         # make sure it is a valid XML string
-        ET.fromstring(xml_content)
+        ET.fromstring(unescape(xml_content))
         self.assertTrue(i.get_class() in xml_content)
         self.assertTrue(i.get_title() in xml_content)
         self.assertTrue(i.get_creator() in xml_content)
         self.assertTrue(i.get_artist() in xml_content)
         self.assertTrue(i.get_url() in xml_content)
 
-        send_request_mock.assert_has_calls([
-            call(self.DEFAULT_URL, self.DEFAULT_HEADER, Player.TRANS_INFO_BODY),
-            call(self.DEFAULT_URL, self.DEFAULT_HEADER, Player.PLAY_BODY)])
 
-    @patch("dlna.dlna_helper.send_request")
-    @patch("dlna.dlna_helper.create_header")
-    def test_play_with_video_item(self, create_header_mock: MagicMock, send_request_mock: MagicMock):
-        p = Player(TestPlayer.FakeRendererWithMetadata())
+    @patch("upnpclient.Device")
+    def test_play_with_video_item(self, device: MagicMock):
+        r = TestPlayer.FakeRendererWithMetadata()
+        p = Player(r)
 
         root_el = ET.fromstring(XML_HEADER + unescape(self.VALID_ITEMS))
         first_item = root_el.findall('r:item', {'r': 'urn:schemas-upnp-org:metadata-1-0/DIDL-Lite/'})[3]
         i = Item(first_item)
         # check precondition
         self.assertEqual("Foo 3", i.get_title())
-
-        create_header_mock.return_value = self.DEFAULT_HEADER
-
-        send_request_mock.side_effect = [
-            None,  # SetAVTransportURI response is not used!
-            TestPlayer.FakeResponse.create_transport_info('STOPPED'),
-            None  # Play response not used
-        ]
+        device.return_value.AVTransport.GetTransportInfo.return_value = {'CurrentTransportState': 'STOPPED'}
 
         p.play(None, item=i)
 
-        create_header_mock.assert_has_calls([
-            call('AVTransport', 'SetAVTransportURI'),
-            call('AVTransport', 'GetTransportInfo'),
-            call('AVTransport', 'Play')])
+        device.assert_has_calls([
+            call(r.get_url()),
+            call().AVTransport.GetTransportInfo(InstanceID=0),
+            call().AVTransport.Play(InstanceID=0, Speed='1'),
+        ], any_order=True)
+        set_av_transport_info_call_args = device.mock_calls[1][2]
 
-        # prepare body
-        self.assertEqual(self.DEFAULT_URL, send_request_mock.mock_calls[0].args[0])
-        self.assertEqual(self.DEFAULT_HEADER, send_request_mock.mock_calls[0].args[1])
         # check third argument
-        xml_content = send_request_mock.mock_calls[0].args[2]
+        xml_content = set_av_transport_info_call_args.get('CurrentURIMetaData')
         # make sure it is a valid XML string
-        ET.fromstring(xml_content)
+        ET.fromstring(unescape(xml_content))
         self.assertTrue(i.get_class() in xml_content)
         self.assertTrue(i.get_title() in xml_content)
         self.assertTrue(i.get_url() in xml_content)
-
-        send_request_mock.assert_has_calls([
-            call(self.DEFAULT_URL, self.DEFAULT_HEADER, Player.TRANS_INFO_BODY),
-            call(self.DEFAULT_URL, self.DEFAULT_HEADER, Player.PLAY_BODY)])

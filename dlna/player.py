@@ -1,27 +1,28 @@
 import uuid
 import logging
-import xml.etree.ElementTree as ET
 from enum import Enum
 from dataclasses import dataclass
 from time import sleep
 
+import upnpclient
+
 from dlna.renderer import Renderer
 from dlna.items import Item
-from dlna import dlna_helper
 
 TRANSPORT_STATE = Enum('TransportState', ['STOPPED', 'PLAYING', 'TRANSITIONING', 'PAUSED_PLAYBACK',
                                           'RECORDING', 'PAUSED_RECORDING', 'NO_MEDIA_PRESENT'])
 
 logger = logging.getLogger(__file__)
 
-
 @dataclass
 class State():
     transport_state: TRANSPORT_STATE
     current_url: str
+    next_url: str
     progress_count: int
 
 
+# a player using the upnpclient pip package
 class Player():
 
     # http://www.upnp.org/specs/av/UPnP-av-AVTransport-v3-Service-20101231.pdf
@@ -38,26 +39,13 @@ class Player():
         </item>
     </DIDL-Lite>
     '''
+
     TITLE_DATA = '<dc:title>{value}</dc:title>'
     CREATOR_DATA = '<dc:creator>{value}</dc:creator>'
     AUTHOR_DATA = '<upnp:author>{value}</upnp:author>'
     ACTOR_DATA = '<upnp:actor>{value}</upnp:actor>'
     ARTIST_DATA = '<upnp:artist>{value}</upnp:artist>'
     CLASS_DATA = '<upnp:class>{value}</upnp:class>'
-
-    # play should get the variable: speed
-    PLAY_BODY = dlna_helper.XML_HEADER + '<s:Envelope s:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/" xmlns:s="http://schemas.xmlsoap.org/soap/envelope/"><s:Body><u:Play xmlns:u="urn:schemas-upnp-org:service:AVTransport:1"><InstanceID>0</InstanceID><Speed>1</Speed></u:Play></s:Body></s:Envelope>'
-    PAUSE_BODY = dlna_helper.XML_HEADER + '<s:Envelope s:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/" xmlns:s="http://schemas.xmlsoap.org/soap/envelope/"><s:Body><u:Pause xmlns:u="urn:schemas-upnp-org:service:AVTransport:1"><InstanceID>0</InstanceID></u:Pause></s:Body></s:Envelope>'
-    STOP_BODY = dlna_helper.XML_HEADER + '<s:Envelope s:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/" xmlns:s="http://schemas.xmlsoap.org/soap/envelope/"><s:Body><u:Stop xmlns:u="urn:schemas-upnp-org:service:AVTransport:1"><InstanceID>0</InstanceID></u:Stop></s:Body></s:Envelope>'
-    POS_INFO_BODY = dlna_helper.XML_HEADER + '<s:Envelope s:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/" xmlns:s="http://schemas.xmlsoap.org/soap/envelope/"><s:Body><u:GetPositionInfo xmlns:u="urn:schemas-upnp-org:service:AVTransport:1"><InstanceID>0</InstanceID></u:GetPositionInfo></s:Body></s:Envelope>'
-    TRANS_INFO_BODY = dlna_helper.XML_HEADER + '<s:Envelope s:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/" xmlns:s="http://schemas.xmlsoap.org/soap/envelope/"><s:Body><u:GetTransportInfo xmlns:u="urn:schemas-upnp-org:service:AVTransport:1"><InstanceID>0</InstanceID></u:GetTransportInfo></s:Body></s:Envelope>'
-    MEDIA_INFO_BODY = dlna_helper.XML_HEADER + '<s:Envelope s:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/" xmlns:s="http://schemas.xmlsoap.org/soap/envelope/"><s:Body><u:GetMediaInfo xmlns:u="urn:schemas-upnp-org:service:AVTransport:1"><InstanceID>0</InstanceID></u:GetMediaInfo></s:Body></s:Envelope>'
-    # should get the variabl: url and metadata
-    PREPARE_BODY = dlna_helper.XML_HEADER + '<s:Envelope s:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/" xmlns:s="http://schemas.xmlsoap.org/soap/envelope/"><s:Body><u:SetAVTransportURI xmlns:u="urn:schemas-upnp-org:service:AVTransport:1"><InstanceID>0</InstanceID><CurrentURI>{url}</CurrentURI><CurrentURIMetaData>{metadata}</CurrentURIMetaData></u:SetAVTransportURI></s:Body></s:Envelope>'
-    PREPARE_BODY_2 = dlna_helper.XML_HEADER + '<s:Envelope s:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/" xmlns:s="http://schemas.xmlsoap.org/soap/envelope/"><s:Body><u:SetAVTransportURI xmlns:u="urn:schemas-upnp-org:service:AVTransport:1"><InstanceID>0</InstanceID><CurrentURI>{url}</CurrentURI></u:SetAVTransportURI></s:Body></s:Envelope>'
-
-    # should get the variabl: url and metadata
-    PREPARE_NEXT_BODY = '<?xml version="1.0" encoding="utf-8" standalone="yes"?>\n<s:Envelope s:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/" xmlns:s="http://schemas.xmlsoap.org/soap/envelope/"><s:Body><u:SetAVTransportURI xmlns:u="urn:schemas-upnp-org:service:AVTransport:1"><InstanceID>0</InstanceID><NextURI>{url}</NextURI><NextURIMetaData>{metadata}</NextURIMetaData></u:SetAVTransportURI></s:Body></s:Envelope>'
 
     GERMAN_CHAR_MAP = {ord('ä'): 'ae', ord('Ä'): 'Ae',
                        ord('ö'): 'oe', ord('Ö'): 'Oe',
@@ -66,6 +54,12 @@ class Player():
 
     def __init__(self, renderer: Renderer):
         self._renderer: Renderer = renderer
+        self._device = None
+
+    def _ensure_device(self):
+        '''We need to delay creation of the device, as it immediately communicates to the thing.'''
+        if (not self._device):
+            self._device = upnpclient.Device(self._renderer.get_url())
 
     # external methods
 
@@ -76,20 +70,52 @@ class Player():
         return self._renderer.get_name()
 
     def stop(self):
-        return self._send_request('Stop', self.STOP_BODY)
+        self._ensure_device()
+        self._device.AVTransport.Stop(InstanceID=0)
 
     def pause(self):
-        return self._send_request('Pause', self.PAUSE_BODY)
-
-    def _add_to_content(self, xml_tag_data, value):
-        if value is not None:
-            recoded_value = value.translate(self.GERMAN_CHAR_MAP)
-            return xml_tag_data.format(value=recoded_value)
-        return ''
+        self._ensure_device()
+        self._device.AVTransport.Pause(InstanceID=0)
 
     def play(self, url_to_play, **kwargs):
-        # prepare metadata
-        encoded_meta = ''
+        self._ensure_device()
+
+        # TODO unclear whether this way to give the kwargs works
+        encoded_meta = self._prepare_metadata(**kwargs)
+        self._device.AVTransport.SetAVTransportURI(InstanceID=0, CurrentURI=url_to_play, CurrentURIMetaData=encoded_meta)
+
+        # see spec 2.4.9.2, we must wait until one of these states
+        self._wait_for_transport_state([TRANSPORT_STATE.STOPPED, TRANSPORT_STATE.PLAYING, TRANSPORT_STATE.PAUSED_PLAYBACK])
+
+        # play message
+        self._device.AVTransport.Play(InstanceID=0, Speed='1')
+
+    def set_next(self, url_to_play, **kwargs):
+        self._ensure_device()
+
+        encoded_meta = self._prepare_metadata(kwargs=kwargs)
+        self._device.AVTransport.SetNextAVTransportURI(InstanceID=0, NextURI=url_to_play, NextURIMetaData=encoded_meta)
+
+    def get_state(self) -> State:
+        self._ensure_device()
+
+        position_info = self._device.AVTransport.GetPositionInfo(InstanceID=0)
+        transport_info = self._device.AVTransport.GetTransportInfo(InstanceID=0)
+        media_info = self._device.AVTransport.GetMediaInfo(InstanceID=0)
+
+        transport_state = transport_info.get('CurrentTransportState', None)
+        rel_count = int(position_info.get('RelCount', None))
+
+        current_URI = media_info.get('CurrentURI')
+        next_URI = media_info.get('NextURI')
+
+        logger.debug(f"current transport_state: {transport_state} and track: {current_URI}")
+
+        return State(TRANSPORT_STATE[transport_state], current_URI, next_URI, rel_count)
+
+    # internal methods
+
+    def _prepare_metadata(self, **kwargs):
         if (self._renderer.include_metadata()):
             if ('item' in kwargs):
                 # uses mediaserver's item
@@ -105,36 +131,28 @@ class Player():
                 inner_info += i.get_res_as_string()
 
                 meta = self.META_DATA.format(id=uuid.uuid4(), parentid=uuid.uuid4(), inner_info=inner_info)
-                encoded_meta = self._escape(self._clean(meta))
-                if logger.isEnabledFor(logging.DEBUG):
-                    metadata_xml = ET.fromstring(dlna_helper.XML_HEADER + meta)
-                    logger.debug(f"metadata as xml {ET.tostring(metadata_xml, encoding='utf-8', method='xml')}")
+                return self._escape(self._clean(meta))
 
             elif ('metadata_raw' in kwargs):
-                encoded_meta = kwargs['metadata_raw']
+                return kwargs['metadata_raw']
 
-        prepare_body = self.PREPARE_BODY.format(url=url_to_play, metadata=encoded_meta)
-        self._send_request('SetAVTransportURI', prepare_body)
+    def _wait_for_transport_state(self, expected_transport_states: list[TRANSPORT_STATE]):
+        logger.debug(f"waiting for state {','.join(map(str, expected_transport_states))}")
+        for i in range(20):
+            transport_info = self._device.AVTransport.GetTransportInfo(InstanceID=0)
+            current_transport_state = transport_info.get('CurrentTransportState', None)
+            if TRANSPORT_STATE[current_transport_state] in expected_transport_states:
+                logger.debug(f"state {current_transport_state} arrived.")
+                return True
+            sleep(0.1)  # wait for 100ms until another try
 
-        # see spec 2.4.9.2, we must wait until one of these states
-        self._wait_for_transport_state([TRANSPORT_STATE.STOPPED, TRANSPORT_STATE.PLAYING, TRANSPORT_STATE.PAUSED_PLAYBACK])
+        return False
 
-        # play SOAP message
-        self._send_request('Play', self.PLAY_BODY)
-
-    def get_state(self) -> State:
-        position_info = self._position_info()
-        transport_info = self._transport_info()
-
-        transport_state = transport_info.get('CurrentTransportState', None)
-        track_URI = position_info.get('TrackURI', None)
-        rel_count = int(position_info.get('RelCount', None))
-
-        logger.debug(f"current transport_state: {transport_state} and track: {track_URI}")
-
-        return State(TRANSPORT_STATE[transport_state], track_URI, rel_count)
-
-    # internal methods
+    def _add_to_content(self, xml_tag_data: str, value: str | None):
+        if value is not None:
+            recoded_value = value.translate(self.GERMAN_CHAR_MAP)
+            return xml_tag_data.format(value=recoded_value)
+        return ''
 
     def _escape(self, str: str):
         str = str.replace("&", "&amp;")
@@ -146,52 +164,3 @@ class Player():
         result = str.strip()
         result = " ".join(result.split())
         return result
-
-    def _position_info(self):
-        response = self._send_request('GetPositionInfo', self.POS_INFO_BODY)
-        response_as_text = response.read().decode('utf-8')
-        logger.debug(f"position info response: {response_as_text}")
-        xml_content = ET.fromstring(response_as_text)
-
-        getPositionInfoResponse = xml_content.find(".//{urn:schemas-upnp-org:service:AVTransport:1}GetPositionInfoResponse")
-        result = {}
-
-        for child in getPositionInfoResponse:
-            result[child.tag] = child.text
-
-        return result
-
-    def _transport_info(self):
-        response = self._send_request('GetTransportInfo', self.TRANS_INFO_BODY)
-        response_as_text = response.read().decode('utf-8')
-        logger.debug(f"transport info response: {response_as_text}")
-        xml_content = ET.fromstring(response_as_text)
-
-        getPositionInfoResponse = xml_content.find(".//{urn:schemas-upnp-org:service:AVTransport:1}GetTransportInfoResponse")
-        result = {}
-
-        for child in getPositionInfoResponse:
-            result[child.tag] = child.text
-
-        return result
-
-    def _wait_for_transport_state(self, expected_transport_states: list[TRANSPORT_STATE]):
-        logger.debug(f"waiting for state {','.join(map(str, expected_transport_states))}")
-        for i in range(20):
-            transport_info = self._transport_info()
-            current_transport_state = transport_info.get('CurrentTransportState', None)
-            if TRANSPORT_STATE[current_transport_state] in expected_transport_states:
-                logger.debug(f"state {current_transport_state} arrived.")
-                return True
-            sleep(0.1)  # wait for 100ms until another try
-
-        return False
-
-    def _send_request(self, header_keyword, body):
-        device_url = self._renderer.get_url()
-        headers = dlna_helper.create_header('AVTransport', header_keyword)
-        if logger.isEnabledFor(logging.DEBUG):
-            logger.debug("Sending player request: ")
-            logger.debug(f"body: {body}")
-            logger.debug(f"headers: {headers}")
-        return dlna_helper.send_request(device_url, headers, body)
