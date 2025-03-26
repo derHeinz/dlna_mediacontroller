@@ -110,17 +110,24 @@ class TestIntegratorBase(unittest.TestCase):
         cmd = PlayCommand(url=self.DEFAULT_URL, artist=None, title=None, loop=loop)
         res = integrator.play(cmd)
         dsc = "Wiederholt " + self.DEFAULT_URL if loop else "Spielt " + self.DEFAULT_URL
-        self._assert_state(integrator._state, current_command=cmd, last_played_url=self.DEFAULT_URL,
-                           running=True, played_count=1, description=dsc, looping=loop)
+        kwargs = {'current_command': cmd, 'last_played_url': self.DEFAULT_URL,
+                  'running': True, 'played_count': 1, 'description': dsc, 'looping': loop}
+        if loop:
+            kwargs['next_play_url'] = self.DEFAULT_URL
+        self._assert_state(integrator._state, **kwargs)
         return res
 
-    def _initial_play_item(self, integrator: Integrator, command: PlayCommand):
+    def _initial_play_item(self, integrator: Integrator, command: PlayCommand, next_item=None):
         res = integrator.play(command)
         desc = "Spielt " + ("Lieder mit 'must go'" if command.loop else self.DEFAULT_ITEM.title + " von " + self.DEFAULT_ITEM.actor)
-
-        self._assert_state(integrator._state, current_command=command, last_played_url=self.DEFAULT_ITEM.url,
-                           last_played_artist=self.DEFAULT_ITEM.actor, last_played_title=self.DEFAULT_ITEM.title,
-                           running=True, played_count=1, description=desc, looping=command.loop)
+        kwargs = {'current_command': command, 'last_played_url': self.DEFAULT_ITEM.url,
+                  'last_played_artist': self.DEFAULT_ITEM.actor, 'last_played_title': self.DEFAULT_ITEM.title,
+                  'running': True, 'played_count': 1, 'description': desc, 'looping': command.loop}
+        if command.loop:
+            kwargs['next_play_url'] = self.DEFAULT_ITEM.url if next_item is None else next_item.url
+            kwargs['next_play_item'] = self.DEFAULT_ITEM if next_item is None else next_item
+        
+        self._assert_state(integrator._state, **kwargs)
         self.assertEqual(res, integrator._state.view())
         return res
 
@@ -352,7 +359,8 @@ class TestIntegratorPlayFunctions(TestIntegratorBase):
         i._loop_process()
         self._assert_state(i._state, current_command=cmd, last_played_url=self.DEFAULT_ITEM.url, played_count=2,
                            last_played_artist="Queen", last_played_title="Show must go on",
-                           running=True, looping=True, description="Spielt Lieder mit 'must go'")
+                           running=True, looping=True, description="Spielt Lieder mit 'must go'",
+                           next_play_url=self.DEFAULT_ITEM.url, next_play_item=self.DEFAULT_ITEM)
         mediaserver_search_mock.assert_not_called()
         self.SCHEDULER.start_job.assert_not_called()
         self.SCHEDULER.stop_job.assert_not_called()
@@ -501,46 +509,11 @@ class TestIntegratorPlayFunctions(TestIntegratorBase):
                            stop_reason="exception in looping: test-error")
 
     @patch("controller.test_integrator.FakeServer.search")
-    def test_play_item_with_loops_using_next(self, mediaserver_search_mock):
-        i = self._testee()
-
-        # prepare mock
-        item_2 = MyItem('must go forward', 'foo', 'bar')
-        mediaserver_search_mock.return_value = MySearchResponse([self.DEFAULT_ITEM, item_2])
-
-        cmd = PlayCommand(title='must go', loop=True)
-        self._initial_play_item(i, cmd)
-
-        # prepare a loop to fire up set_next item
-        self.PLAYER.reset_mock()
-
-        self.PLAYER.get_state.return_value = PlayerState(TRANSPORT_STATE.PLAYING, self.DEFAULT_ITEM.url, None, 0)
-        self.SCHEDULER.reset_mock()
-
-        # should set_next
-        self._assert_state(i._state, current_command=cmd, last_played_url=self.DEFAULT_ITEM.url, played_count=1,
-                           last_played_artist="Queen", last_played_title="Show must go on",
-                           running=True, looping=True, description="Spielt Lieder mit 'must go'")
-        i._loop_process()
-        self._assert_state(i._state, current_command=cmd, last_played_url=self.DEFAULT_ITEM.url, played_count=1,
-                           last_played_artist="Queen", last_played_title="Show must go on",
-                           next_play_url=item_2.url, next_play_item=item_2,
-                           running=True, looping=True, description="Spielt Lieder mit 'must go'")
-
-        self.PLAYER.set_next.assert_called_with('bar', item=item_2)
-
-        # mediaserver_search_mock.assert_not_called()  # TODO check this
-        self.SCHEDULER.start_job.assert_not_called()
-        self.SCHEDULER.stop_job.assert_not_called()
-        self.PLAYER.get_state.assert_called_with()
-
-    @patch("controller.test_integrator.FakeServer.search")
     def test_play_loop_scenario_1(self, mediaserver_search_mock):
         """Scenario description:
         1) command: play songs from one artist in a loop
-        2) loop1: initial item playing, check next item beeing set
-        2) loop2: initial item playing, next item already set! check not set again
-        3) loop3: next item is playing, check next-next item is beeing set
+        2) loop1: initial item playing, next item already set! check not set again
+        3) loop2: next item is playing, check next-next item is beeing set
         """
         i = self._testee()
 
@@ -551,21 +524,10 @@ class TestIntegratorPlayFunctions(TestIntegratorBase):
         mediaserver_search_mock.return_value = MySearchResponse([item_1, item_2, item_3])
 
         cmd = PlayCommand(title='must go', loop=True)
-        self._initial_play_item(i, cmd)
+        self._initial_play_item(i, cmd, next_item=item_2)
         self.SCHEDULER.reset_mock()
 
         # loop1
-        self.PLAYER.reset_mock()
-        self.PLAYER.get_state.return_value = PlayerState(TRANSPORT_STATE.PLAYING, item_1.url, None, 0)
-        i._loop_process()
-        self.PLAYER.set_next.assert_called_with(item_2.url, item=item_2)
-        self.PLAYER.reset_mock()
-        self._assert_state(i._state, current_command=cmd, last_played_url=item_1.url, played_count=1,
-                           last_played_artist=item_1.actor, last_played_title=item_1.title,
-                           next_play_url=item_2.url, next_play_item=item_2,
-                           running=True, looping=True, description="Spielt Lieder mit 'must go'")
-
-        # loop2
         self.PLAYER.reset_mock()
         self.PLAYER.get_state.return_value = PlayerState(TRANSPORT_STATE.PLAYING, item_1.url, item_2.url, 0)
         i._loop_process()
@@ -576,7 +538,7 @@ class TestIntegratorPlayFunctions(TestIntegratorBase):
                            next_play_url=item_2.url, next_play_item=item_2,
                            running=True, looping=True, description="Spielt Lieder mit 'must go'")
 
-        # loop3
+        # loop2
         self.PLAYER.reset_mock()
         self.PLAYER.get_state.return_value = PlayerState(TRANSPORT_STATE.PLAYING, item_2.url, None, 0)
         i._loop_process()
@@ -604,7 +566,7 @@ class TestIntegratorPlayFunctions(TestIntegratorBase):
         mediaserver_search_mock.return_value = MySearchResponse([item_1, item_2, item_3])
 
         cmd = PlayCommand(title='must go', loop=True)
-        self._initial_play_item(i, cmd)
+        self._initial_play_item(i, cmd, next_item=item_2)
         self.SCHEDULER.reset_mock()
 
         # loop1
@@ -616,18 +578,20 @@ class TestIntegratorPlayFunctions(TestIntegratorBase):
         self.PLAYER.reset_mock()
         self._assert_state(i._state, current_command=cmd, last_played_url=item_1.url, played_count=1,
                            last_played_artist=item_1.actor, last_played_title=item_1.title,
-                           running=True, looping=True, description="Spielt Lieder mit 'must go'")
+                           running=True, looping=True, description="Spielt Lieder mit 'must go'",
+                           next_play_url=item_2.url, next_play_item=item_2)
 
         # loop2
         self.PLAYER.reset_mock()
         self.PLAYER.get_state.return_value = PlayerState(TRANSPORT_STATE.STOPPED, item_1.url, None, 0)
         i._loop_process()
-        self.PLAYER.set_next.assert_not_called()
-        self.PLAYER.play.assert_called_with(item_2.url, item=item_2)
+        self.PLAYER.play.assert_called_with(item_3.url, item=item_3)
+        self.PLAYER.set_next.assert_called_with(item_1.url, item=item_1)
         self.PLAYER.reset_mock()
-        self._assert_state(i._state, current_command=cmd, last_played_url=item_2.url, played_count=2,
-                           last_played_artist=item_2.actor, last_played_title=item_2.title,
-                           running=True, looping=True, description="Spielt Lieder mit 'must go'")
+        self._assert_state(i._state, current_command=cmd, last_played_url=item_3.url, played_count=2,
+                           last_played_artist=item_3.actor, last_played_title=item_3.title,
+                           running=True, looping=True, description="Spielt Lieder mit 'must go'",
+                           next_play_url=item_1.url, next_play_item=item_1)
 
         # loop3
         self.PLAYER.reset_mock()
@@ -636,6 +600,6 @@ class TestIntegratorPlayFunctions(TestIntegratorBase):
         self.PLAYER.set_next.assert_not_called()
         self.PLAYER.play.assert_not_called()
         self.PLAYER.reset_mock()
-        self._assert_state(i._state, current_command=None, last_played_url=item_2.url, played_count=0,
-                           last_played_artist=item_2.actor, last_played_title=item_2.title,
+        self._assert_state(i._state, current_command=None, last_played_url=item_3.url, played_count=0,
+                           last_played_artist=item_3.actor, last_played_title=item_3.title,
                            running=False, looping=False, description="Aus", stop_reason='interrupted')

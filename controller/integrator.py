@@ -53,12 +53,11 @@ class Integrator():
         self._state.next_track_is_playing()
 
     def _set_next_track(self):
-        current_command_url = self._state.current_command.url
-        if current_command_url is not None:
+        if self._state.is_url_mode():
             # this mode always plays the same url
             logger.debug('next playing without item')
-            self._player.set_next(current_command_url)
-            self._state.next_play(current_command_url, None)
+            self._player.set_next(self._state.current_command.url)
+            self._state.next_play(self._state.current_command.url, None)
             return
 
         if self._state.search_response is None:
@@ -79,12 +78,13 @@ class Integrator():
             self._end("nothing found in media server")
 
     def _play_next_track(self):
-        current_command_url = self._state.current_command.url
-        if current_command_url is not None:
+        if self._state.is_url_mode():
             # this mode always plays the same url
             logger.debug('playing without item')
-            self._player.play(current_command_url)
-            self._state.now_playing(current_command_url, None)
+            self._player.play(self._state.current_command.url)
+            self._state.now_playing(self._state.current_command.url, None)
+            if self._state.looping:
+                self._set_next_track()
             return  # early return since it's a simple play the URL mode.
 
         if self._state.search_response is None:
@@ -96,6 +96,8 @@ class Integrator():
 
             self._player.play(url, item=item)
             self._state.now_playing(url, item)
+            if self._state.looping:
+                self._set_next_track()
         else:
             self._end("nothing found in media server")
 

@@ -46,9 +46,6 @@ class State():
         self.last_played_url = None
         self.last_played_item: Item = None
 
-        self.next_play_url = None
-        self.next_play_item: Item = None
-
     def _initial_values(self):
         # reset request
         self.current_command = None
@@ -61,6 +58,9 @@ class State():
         self.played_count = 0
         self.description = "Aus"
         self.stop_reason = None
+
+        self.next_play_url = None
+        self.next_play_item: Item = None
 
     def _title_and_artist(self):
         title = self.last_played_item.get_title() if self.last_played_item is not None else None
