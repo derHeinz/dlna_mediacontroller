@@ -80,9 +80,8 @@ class Player():
     def play(self, url_to_play, **kwargs):
         self._ensure_device()
 
-        # TODO unclear whether this way to give the kwargs works
-        encoded_meta = self._prepare_metadata(**kwargs)
-        self._device.AVTransport.SetAVTransportURI(InstanceID=0, CurrentURI=url_to_play, CurrentURIMetaData=encoded_meta)
+        metadata = self._prepare_metadata(**kwargs)
+        self._device.AVTransport.SetAVTransportURI(InstanceID=0, CurrentURI=url_to_play, CurrentURIMetaData=metadata)
 
         # see spec 2.4.9.2, we must wait until one of these states
         self._wait_for_transport_state([TRANSPORT_STATE.STOPPED, TRANSPORT_STATE.PLAYING, TRANSPORT_STATE.PAUSED_PLAYBACK])
@@ -93,8 +92,8 @@ class Player():
     def set_next(self, url_to_play, **kwargs):
         self._ensure_device()
 
-        encoded_meta = self._prepare_metadata(kwargs=kwargs)
-        self._device.AVTransport.SetNextAVTransportURI(InstanceID=0, NextURI=url_to_play, NextURIMetaData=encoded_meta)
+        metadata = self._prepare_metadata(**kwargs)
+        self._device.AVTransport.SetNextAVTransportURI(InstanceID=0, NextURI=url_to_play, NextURIMetaData=metadata)
 
     def get_state(self) -> State:
         self._ensure_device()
@@ -130,8 +129,7 @@ class Player():
                 inner_info += self._add_to_content(self.CLASS_DATA, i.get_class())
                 inner_info += i.get_res_as_string()
 
-                meta = self.META_DATA.format(id=uuid.uuid4(), parentid=uuid.uuid4(), inner_info=inner_info)
-                return self._escape(self._clean(meta))
+                return self.META_DATA.format(id=uuid.uuid4(), parentid=uuid.uuid4(), inner_info=inner_info)
 
             elif ('metadata_raw' in kwargs):
                 return kwargs['metadata_raw']
@@ -153,14 +151,3 @@ class Player():
             recoded_value = value.translate(self.GERMAN_CHAR_MAP)
             return xml_tag_data.format(value=recoded_value)
         return ''
-
-    def _escape(self, str: str):
-        str = str.replace("&", "&amp;")
-        str = str.replace("<", "&lt;")
-        str = str.replace(">", "&gt;")
-        return str
-
-    def _clean(self, str: str):
-        result = str.strip()
-        result = " ".join(result.split())
-        return result

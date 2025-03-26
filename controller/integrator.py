@@ -94,7 +94,6 @@ class Integrator():
             item = self._state.search_response.random_item()
             url = item.get_url()
 
-            logger.debug(f"playing with item {item}")
             self._player.play(url, item=item)
             self._state.now_playing(url, item)
         else:
