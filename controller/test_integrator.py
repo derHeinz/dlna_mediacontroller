@@ -54,6 +54,8 @@ class TestIntegratorBase(unittest.TestCase):
 
     DEFAULT_URL = 'a-track'
     DEFAULT_PLAYER_NAME = 'TestPlayer'
+    DEFAULT_PLAYER_SCHEDULER_NAME = 'Media_Observer_' + DEFAULT_PLAYER_NAME
+    DEFAULT_SCHEDULER_INTERVAL = 10
 
     PLAYER: MagicMock
     FAKE_SERVER = FakeServer('F')
@@ -174,7 +176,7 @@ class TestIntegratorOtherFunctions(TestIntegratorBase):
         with self.assertRaises(OSError):
             i.pause()
         self._assert_state(i._state, stop_reason="exception in pause: test-error")
-        self.SCHEDULER.stop_job.assert_has_calls([call(self.DEFAULT_PLAYER_NAME)])
+        self.SCHEDULER.stop_job.assert_has_calls([call(self.DEFAULT_PLAYER_SCHEDULER_NAME)])
         self.SCHEDULER.start_job.assert_not_called()
 
     def test_stop(self):
@@ -192,7 +194,7 @@ class TestIntegratorOtherFunctions(TestIntegratorBase):
         with self.assertRaises(OSError):
             i.stop()
         self._assert_state(i._state, stop_reason="exception in stop: test-error")
-        self.SCHEDULER.stop_job.assert_has_calls([call(self.DEFAULT_PLAYER_NAME)])
+        self.SCHEDULER.stop_job.assert_has_calls([call(self.DEFAULT_PLAYER_SCHEDULER_NAME)])
         self.SCHEDULER.start_job.assert_not_called()
 
 
@@ -213,7 +215,7 @@ class TestIntegratorPlayFunctions(TestIntegratorBase):
         with self.assertRaises(OSError):
             i.play(PlayCommand(url=self.DEFAULT_URL, artist=None, title=None, loop=True))
         self._assert_state(i._state, stop_reason="exception in play: test-error")
-        self.SCHEDULER.stop_job.assert_has_calls([call(self.DEFAULT_PLAYER_NAME)])
+        self.SCHEDULER.stop_job.assert_has_calls([call(self.DEFAULT_PLAYER_SCHEDULER_NAME)])
         self.SCHEDULER.start_job.assert_not_called()
 
     @patch("controller.test_integrator.FakeServer.search")
@@ -226,7 +228,7 @@ class TestIntegratorPlayFunctions(TestIntegratorBase):
         self._initial_play_item(i, PlayCommand(title='must go'))
 
         mediaserver_search_mock.assert_called_with(title='must go')
-        self.SCHEDULER.stop_job.assert_called_with(self.DEFAULT_PLAYER_NAME)
+        self.SCHEDULER.stop_job.assert_called_with(self.DEFAULT_PLAYER_SCHEDULER_NAME)
         self.PLAYER.play.assert_called_with(self.DEFAULT_ITEM.url, item=self.DEFAULT_ITEM)
 
     @patch("controller.test_integrator.FakeServer.search")
@@ -241,7 +243,7 @@ class TestIntegratorPlayFunctions(TestIntegratorBase):
         self.assertEqual(res, i._state.view())
 
         mediaserver_search_mock.assert_called_with(title='must go')
-        self.SCHEDULER.stop_job.assert_called_with(self.DEFAULT_PLAYER_NAME)
+        self.SCHEDULER.stop_job.assert_called_with(self.DEFAULT_PLAYER_SCHEDULER_NAME)
         self.PLAYER.play.assert_not_called()
 
         self._assert_state(i._state, stop_reason="nothing found in media server")
@@ -292,8 +294,8 @@ class TestIntegratorPlayFunctions(TestIntegratorBase):
         i = self._testee()
 
         self._initial_play_url(i)
-        self.SCHEDULER.start_job.assert_has_calls([call(self.DEFAULT_PLAYER_NAME, i._loop_process)])
-        self.SCHEDULER.stop_job.assert_has_calls([call(self.DEFAULT_PLAYER_NAME)])
+        self.SCHEDULER.start_job.assert_has_calls([call(self.DEFAULT_PLAYER_SCHEDULER_NAME, i._loop_process, self.DEFAULT_SCHEDULER_INTERVAL)])
+        self.SCHEDULER.stop_job.assert_has_calls([call(self.DEFAULT_PLAYER_SCHEDULER_NAME)])
         self.PLAYER.play.assert_has_calls([call('a-track')])
 
         # first loop, stop playing
@@ -311,8 +313,8 @@ class TestIntegratorPlayFunctions(TestIntegratorBase):
 
         cmd = PlayCommand(url=self.DEFAULT_URL, loop=True)
         self._initial_play_url(i, True)
-        self.SCHEDULER.start_job.assert_has_calls([call(self.DEFAULT_PLAYER_NAME, i._loop_process)])
-        self.SCHEDULER.stop_job.assert_has_calls([call(self.DEFAULT_PLAYER_NAME)])
+        self.SCHEDULER.start_job.assert_has_calls([call(self.DEFAULT_PLAYER_SCHEDULER_NAME, i._loop_process, self.DEFAULT_SCHEDULER_INTERVAL)])
+        self.SCHEDULER.stop_job.assert_has_calls([call(self.DEFAULT_PLAYER_SCHEDULER_NAME)])
         self.PLAYER.play.assert_has_calls([call('a-track')])
 
         # first loop, still playing
@@ -379,7 +381,7 @@ class TestIntegratorPlayFunctions(TestIntegratorBase):
 
         i._loop_process()
         self.PLAYER.get_state.assert_has_calls([call()])
-        self.SCHEDULER.stop_job.assert_called_with(self.DEFAULT_PLAYER_NAME)
+        self.SCHEDULER.stop_job.assert_called_with(self.DEFAULT_PLAYER_SCHEDULER_NAME)
         self.SCHEDULER.start_job.assert_not_called()
         self._assert_state(i._state, running=False, looping=False, last_played_url=self.DEFAULT_URL, stop_reason="interrupted")
 
@@ -395,7 +397,7 @@ class TestIntegratorPlayFunctions(TestIntegratorBase):
 
         i._loop_process()
         self.PLAYER.get_state.assert_has_calls([call()])
-        self.SCHEDULER.stop_job.assert_called_with(self.DEFAULT_PLAYER_NAME)
+        self.SCHEDULER.stop_job.assert_called_with(self.DEFAULT_PLAYER_SCHEDULER_NAME)
         self.SCHEDULER.start_job.assert_not_called()
         self._assert_state(i._state, running=False, last_played_url=self.DEFAULT_URL, description="Aus",
                            stop_reason="interrupted")
@@ -412,7 +414,7 @@ class TestIntegratorPlayFunctions(TestIntegratorBase):
 
         i._loop_process()
         self.PLAYER.get_state.assert_has_calls([call()])
-        self.SCHEDULER.stop_job.assert_called_with(self.DEFAULT_PLAYER_NAME)
+        self.SCHEDULER.stop_job.assert_called_with(self.DEFAULT_PLAYER_SCHEDULER_NAME)
         self.SCHEDULER.start_job.assert_not_called()
         self._assert_state(i._state, running=False, looping=False, last_played_url=self.DEFAULT_URL, description="Aus",
                            stop_reason="interrupted")
@@ -438,7 +440,7 @@ class TestIntegratorPlayFunctions(TestIntegratorBase):
         self.assertEqual(res, i._state.view())
 
         self.PLAYER.play.assert_has_calls([call(self.DEFAULT_URL)])
-        self.SCHEDULER.stop_job.assert_has_calls([call(self.DEFAULT_PLAYER_NAME)])
+        self.SCHEDULER.stop_job.assert_has_calls([call(self.DEFAULT_PLAYER_SCHEDULER_NAME)])
         self.SCHEDULER.start_job.assert_called_once()
         mediaserver_search_mock.assert_not_called()
 
@@ -504,7 +506,7 @@ class TestIntegratorPlayFunctions(TestIntegratorBase):
         with self.assertRaises(OSError):
             i._loop_process()
         self.PLAYER.get_state.assert_has_calls([call()])
-        self.SCHEDULER.stop_job.assert_called_with(self.DEFAULT_PLAYER_NAME)
+        self.SCHEDULER.stop_job.assert_called_with(self.DEFAULT_PLAYER_SCHEDULER_NAME)
         self._assert_state(i._state, last_played_url='a-track', running=False, description='Aus',
                            stop_reason="exception in looping: test-error")
 

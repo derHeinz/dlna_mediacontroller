@@ -21,17 +21,14 @@ class Scheduler():
 
         self.scheduler.start()
 
-    def _job_name(self, name: str):
-        return self.JOB_NAME_PREFIX + name
-
-    def start_job(self, name: str, process_to_run):
-        logger.debug(f"starting observer job for {name}")
-        trig = CronTrigger(second='*/10')
-        self.scheduler.add_job(id=self._job_name(name), name=self._job_name(name), func=process_to_run, trigger=trig)
+    def start_job(self, name: str, process_to_run, seconds: int):
+        logger.debug(f"starting job for {name} with ")
+        trig = CronTrigger(second=('*/' + str(seconds)))
+        self.scheduler.add_job(id=name, name=name, func=process_to_run, trigger=trig)
 
     def stop_job(self, name: str):
-        job = self.scheduler.get_job(self._job_name(name))
+        job = self.scheduler.get_job(name)
         if job is None:
             return
-        logger.debug(f"stopping observer job for {name}")
-        self.scheduler.remove_job(self._job_name(name))
+        logger.debug(f"stopping job for {name}")
+        self.scheduler.remove_job(name)

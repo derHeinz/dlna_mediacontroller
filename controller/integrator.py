@@ -21,6 +21,8 @@ NEXT_MEDIA_STATE = Enum('NextMediaState', ['SET', 'UNSET'])
 
 class Integrator():
 
+    DEFAULT_CHECK_INTERVAL = 10
+
     _state: State
     _player: Player
     _media_server: MediaServer
@@ -201,7 +203,7 @@ class Integrator():
             raise RequestInvalidException()
 
     def _scheduler_name(self):
-        return self._player.get_name()
+        return "Media_Observer_" + self._player.get_name()
 
     # external methods
 
@@ -214,7 +216,7 @@ class Integrator():
         try:
             self._initiate(s)
             logger.debug(f"current state {self._state.running} with count {self._state.played_count}")
-            self._scheduler.start_job(self._scheduler_name(), self._loop_process)
+            self._scheduler.start_job(self._scheduler_name(), self._loop_process, self.DEFAULT_CHECK_INTERVAL)
         except Exception as e:
             logger.info('error while playing', exc_info=e)
             # reset inner state

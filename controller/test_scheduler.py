@@ -5,6 +5,7 @@ import unittest
 class TestScheduler(unittest.TestCase):
 
     DEFAULT_NAME = 'asdf'
+    DEFAULT_INTERVAL = 10
 
     def _testee(self) -> Scheduler:
         return Scheduler()
@@ -23,8 +24,8 @@ class TestScheduler(unittest.TestCase):
         s = self._testee()
         s.start()
 
-        s.start_job(self.DEFAULT_NAME, self._noop)
-        s.start_job('foo', self._noop)
+        s.start_job(self.DEFAULT_NAME, self._noop, self.DEFAULT_INTERVAL)
+        s.start_job('foo', self._noop, self.DEFAULT_INTERVAL)
         self.assertEqual(2, len(s.scheduler.get_jobs()))
         s.stop_job(self.DEFAULT_NAME)
         self.assertEqual(1, len(s.scheduler.get_jobs()))
@@ -43,7 +44,7 @@ class TestScheduler(unittest.TestCase):
         s.start()
 
         self.assertEqual(0, len(s.scheduler.get_jobs()))  # no jobs
-        s.start_job(self.DEFAULT_NAME, self._noop)
+        s.start_job(self.DEFAULT_NAME, self._noop, self.DEFAULT_INTERVAL)
         self.assertEqual(1, len(s.scheduler.get_jobs()))  # 1 job
         s.stop_job(self.DEFAULT_NAME)
         self.assertEqual(0, len(s.scheduler.get_jobs()))  # no jobs
