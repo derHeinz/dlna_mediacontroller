@@ -10,25 +10,7 @@ from dlna.items import Item
 
 class TestPlayer(unittest.TestCase):
 
-    DEFAULT_RENDERER_NAME = 'FakeRenderer'
-    DEFAULT_URL = 'url'
-    DEFAULT_HEADER = 'fake-header'
-
-    class FakeRenderer:
-
-        def get_name(self):
-            return TestPlayer.DEFAULT_RENDERER_NAME
-
-        def get_url(self):
-            return TestPlayer.DEFAULT_URL
-
-        def include_metadata(self):
-            return False
-
-    class FakeRendererWithMetadata(FakeRenderer):
-
-        def include_metadata(self):
-            return True
+    DEFAULT_WITH_METADATA = True
 
     class FakeResponse:
 
@@ -88,45 +70,32 @@ class TestPlayer(unittest.TestCase):
             txt = TestPlayer.FakeResponse.FAKE_TRANSPORT_INFO.format(transport_state=transport_state)
             return TestPlayer.FakeResponse(txt)
 
-    def test_getter(self):
-        r = TestPlayer.FakeRenderer()
-        p = Player(r)
-
-        self.assertEqual('FakeRenderer', p.get_name())
-        self.assertEqual(r, p.get_renderer())
-
     @patch("upnpclient.Device")
     def test_stop(self, device):
-        r = TestPlayer.FakeRenderer()
-        p = Player(r)
+        p = Player(device, self.DEFAULT_WITH_METADATA)
 
         p.stop()
-
         device.assert_has_calls([
-            call(r.get_url()),
-            call().AVTransport.Stop(InstanceID=0)
+            call.AVTransport.Stop(InstanceID=0)
         ])
 
     @patch("upnpclient.Device")
     def test_pause(self, device):
-        r = TestPlayer.FakeRenderer()
-        p = Player(r)
+        p = Player(device, self.DEFAULT_WITH_METADATA)
 
         p.pause()
 
         device.assert_has_calls([
-            call(r.get_url()),
-            call().AVTransport.Pause(InstanceID=0)
+            call.AVTransport.Pause(InstanceID=0)
         ])
 
     @patch("upnpclient.Device")
     def test_get_state(self, device):
-        r = TestPlayer.FakeRenderer()
-        p = Player(r)
+        p = Player(device, self.DEFAULT_WITH_METADATA)
 
-        device.return_value.AVTransport.GetPositionInfo.return_value = {'RelCount': '0'}
-        device.return_value.AVTransport.GetTransportInfo.return_value = {'CurrentTransportState': 'NO_MEDIA_PRESENT'}
-        device.return_value.AVTransport.GetMediaInfo.return_value = {'CurrentURI': 'a-track', 'NextURI': 'b-track'}
+        device.AVTransport.GetPositionInfo.return_value = {'RelCount': '0'}
+        device.AVTransport.GetTransportInfo.return_value = {'CurrentTransportState': 'NO_MEDIA_PRESENT'}
+        device.AVTransport.GetMediaInfo.return_value = {'CurrentURI': 'a-track', 'NextURI': 'b-track'}
 
         res = p.get_state()
         self.assertEqual(TRANSPORT_STATE.NO_MEDIA_PRESENT, res.transport_state)
@@ -135,27 +104,24 @@ class TestPlayer(unittest.TestCase):
         self.assertEqual('b-track', res.next_url)
 
         device.assert_has_calls([
-            call(r.get_url()),
-            call().AVTransport.GetPositionInfo(InstanceID=0),
-            call().AVTransport.GetTransportInfo(InstanceID=0),
-            call().AVTransport.GetMediaInfo(InstanceID=0)
+            call.AVTransport.GetPositionInfo(InstanceID=0),
+            call.AVTransport.GetTransportInfo(InstanceID=0),
+            call.AVTransport.GetMediaInfo(InstanceID=0)
         ])
 
     @patch("upnpclient.Device")
     def test_play(self, device):
-        r = TestPlayer.FakeRenderer()
-        p = Player(r)
+        p = Player(device, self.DEFAULT_WITH_METADATA)
 
-        device.return_value.AVTransport.GetTransportInfo.return_value = {'CurrentTransportState': 'STOPPED'}
+        device.AVTransport.GetTransportInfo.return_value = {'CurrentTransportState': 'STOPPED'}
 
         track_uri = 'track-uri'
 
         p.play(track_uri)
 
         device.assert_has_calls([
-            call(r.get_url()),
-            call().AVTransport.SetAVTransportURI(InstanceID=0, CurrentURI=track_uri, CurrentURIMetaData=None),
-            call().AVTransport.GetTransportInfo(InstanceID=0),
+            call.AVTransport.SetAVTransportURI(InstanceID=0, CurrentURI=track_uri, CurrentURIMetaData=None),
+            call.AVTransport.GetTransportInfo(InstanceID=0),
         ])
 
     VALID_ITEMS = """
@@ -191,8 +157,7 @@ class TestPlayer(unittest.TestCase):
 
     @patch("upnpclient.Device")
     def test_play_with_audio_item(self, device: MagicMock):
-        r = TestPlayer.FakeRendererWithMetadata()
-        p = Player(r)
+        p = Player(device, self.DEFAULT_WITH_METADATA)
 
         root_el = ET.fromstring(XML_HEADER + unescape(self.VALID_ITEMS))
         first_item = root_el.find('r:item', {'r': 'urn:schemas-upnp-org:metadata-1-0/DIDL-Lite/'})
@@ -200,16 +165,15 @@ class TestPlayer(unittest.TestCase):
         # check precondition
         self.assertEqual("FooBarMan", i.get_creator())
 
-        device.return_value.AVTransport.GetTransportInfo.return_value = {'CurrentTransportState': 'STOPPED'}
+        device.AVTransport.GetTransportInfo.return_value = {'CurrentTransportState': 'STOPPED'}
 
         p.play(None, item=i)
 
         device.assert_has_calls([
-            call(r.get_url()),
-            call().AVTransport.GetTransportInfo(InstanceID=0),
-            call().AVTransport.Play(InstanceID=0, Speed='1'),
+            call.AVTransport.GetTransportInfo(InstanceID=0),
+            call.AVTransport.Play(InstanceID=0, Speed='1'),
         ], any_order=True)
-        set_av_transport_info_call_args = device.mock_calls[1][2]
+        set_av_transport_info_call_args = device.mock_calls[0][2]
 
         # check third argument
         xml_content = set_av_transport_info_call_args.get('CurrentURIMetaData')
@@ -221,27 +185,24 @@ class TestPlayer(unittest.TestCase):
         self.assertTrue(i.get_artist() in xml_content)
         self.assertTrue(i.get_url() in xml_content)
 
-
     @patch("upnpclient.Device")
     def test_play_with_video_item(self, device: MagicMock):
-        r = TestPlayer.FakeRendererWithMetadata()
-        p = Player(r)
+        p = Player(device, self.DEFAULT_WITH_METADATA)
 
         root_el = ET.fromstring(XML_HEADER + unescape(self.VALID_ITEMS))
         first_item = root_el.findall('r:item', {'r': 'urn:schemas-upnp-org:metadata-1-0/DIDL-Lite/'})[3]
         i = Item(first_item)
         # check precondition
         self.assertEqual("Foo 3", i.get_title())
-        device.return_value.AVTransport.GetTransportInfo.return_value = {'CurrentTransportState': 'STOPPED'}
+        device.AVTransport.GetTransportInfo.return_value = {'CurrentTransportState': 'STOPPED'}
 
         p.play(None, item=i)
 
         device.assert_has_calls([
-            call(r.get_url()),
-            call().AVTransport.GetTransportInfo(InstanceID=0),
-            call().AVTransport.Play(InstanceID=0, Speed='1'),
+            call.AVTransport.GetTransportInfo(InstanceID=0),
+            call.AVTransport.Play(InstanceID=0, Speed='1'),
         ], any_order=True)
-        set_av_transport_info_call_args = device.mock_calls[1][2]
+        set_av_transport_info_call_args = device.mock_calls[0][2]
 
         # check third argument
         xml_content = set_av_transport_info_call_args.get('CurrentURIMetaData')

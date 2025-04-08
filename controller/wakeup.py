@@ -28,18 +28,18 @@ def _try_wakeup(mac):
     send_magic_packet(mac)
 
 
-def ensure_online(renderer) -> bool:
-    url = renderer.get_url()
+def ensure_online(player) -> bool:
+    url = player.get_url()
 
     online = _check_online(url)
     if online:
         return True
-    if not renderer.get_mac():
+    if not player.get_mac():
         logger.debug("Cannot wakeup because device has no mac.")
         return False
 
     # try a wakeup
-    mac = renderer.get_mac()
+    mac = player.get_mac()
     for i in range(MAX_RETRIES):
         online = _check_online(url)
         if not online:

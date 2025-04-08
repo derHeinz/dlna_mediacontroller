@@ -6,7 +6,6 @@ from time import sleep
 
 import upnpclient
 
-from dlna.renderer import Renderer
 from dlna.items import Item
 
 TRANSPORT_STATE = Enum('TransportState', ['STOPPED', 'PLAYING', 'TRANSITIONING', 'PAUSED_PLAYBACK',
@@ -51,34 +50,23 @@ class Player():
                        ord('ö'): 'oe', ord('Ö'): 'Oe',
                        ord('ü'): 'ue', ord('Ü'): 'Ue',
                        ord('ß'): 'ss'}
+    
+    _device: upnpclient.Device
+    _include_metadata: bool
 
-    def __init__(self, renderer: Renderer):
-        self._renderer: Renderer = renderer
-        self._device = None
-
-    def _ensure_device(self):
-        '''We need to delay creation of the device, as it immediately communicates to the thing.'''
-        if (not self._device):
-            self._device = upnpclient.Device(self._renderer.get_url())
+    def __init__(self, device: upnpclient.Device, include_metadata: bool):
+        self._device = device
+        self._include_metadata = include_metadata
 
     # external methods
 
-    def get_renderer(self):
-        return self._renderer
-
-    def get_name(self):
-        return self._renderer.get_name()
-
     def stop(self):
-        self._ensure_device()
         self._device.AVTransport.Stop(InstanceID=0)
 
     def pause(self):
-        self._ensure_device()
         self._device.AVTransport.Pause(InstanceID=0)
 
     def play(self, url_to_play, **kwargs):
-        self._ensure_device()
 
         metadata = self._prepare_metadata(**kwargs)
         self._device.AVTransport.SetAVTransportURI(InstanceID=0, CurrentURI=url_to_play, CurrentURIMetaData=metadata)
@@ -90,13 +78,11 @@ class Player():
         self._device.AVTransport.Play(InstanceID=0, Speed='1')
 
     def set_next(self, url_to_play, **kwargs):
-        self._ensure_device()
 
         metadata = self._prepare_metadata(**kwargs)
         self._device.AVTransport.SetNextAVTransportURI(InstanceID=0, NextURI=url_to_play, NextURIMetaData=metadata)
 
     def get_state(self) -> State:
-        self._ensure_device()
 
         position_info = self._device.AVTransport.GetPositionInfo(InstanceID=0)
         transport_info = self._device.AVTransport.GetTransportInfo(InstanceID=0)
@@ -115,7 +101,7 @@ class Player():
     # internal methods
 
     def _prepare_metadata(self, **kwargs):
-        if (self._renderer.include_metadata()):
+        if (self._include_metadata):
             if ('item' in kwargs):
                 # uses mediaserver's item
                 i: Item = kwargs['item']
@@ -133,6 +119,8 @@ class Player():
 
             elif ('metadata_raw' in kwargs):
                 return kwargs['metadata_raw']
+
+        return None
 
     def _wait_for_transport_state(self, expected_transport_states: list[TRANSPORT_STATE]):
         logger.debug(f"waiting for state {','.join(map(str, expected_transport_states))}")

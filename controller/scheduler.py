@@ -1,6 +1,6 @@
 import logging
 
-from apscheduler.triggers.cron import CronTrigger
+from apscheduler.triggers.interval import IntervalTrigger
 from apscheduler.schedulers.blocking import BlockingScheduler, BaseScheduler
 from apscheduler.schedulers.background import BackgroundScheduler
 
@@ -10,7 +10,6 @@ logger = logging.getLogger(__file__)
 class Scheduler():
 
     scheduler: BaseScheduler = None
-    JOB_NAME_PREFIX = "Media_Observer_"
 
     def start(self, blocking=False):
         logger.debug("starting scheduler")
@@ -23,7 +22,7 @@ class Scheduler():
 
     def start_job(self, name: str, process_to_run, seconds: int):
         logger.debug(f"starting job for {name} with ")
-        trig = CronTrigger(second=('*/' + str(seconds)))
+        trig = IntervalTrigger(seconds=seconds)
         self.scheduler.add_job(id=name, name=name, func=process_to_run, trigger=trig)
 
     def stop_job(self, name: str):

@@ -1,0 +1,145 @@
+import unittest
+from unittest.mock import patch, call, MagicMock
+from dataclasses import dataclass
+
+from controller.data.exceptions import RequestInvalidException
+from controller.data.command import PlayCommand
+from dlna.player import State as PlayerState, TRANSPORT_STATE
+from controller.data.state import State
+from controller.integrator import Integrator
+from controller.player_wrapper import PlayerWrapper, configure, discover
+
+
+class TestPlayerWrapper(unittest.TestCase):
+
+    DEFAULT_URL = 'a-track'
+    DEFAULT_CONFIG = {
+        'name': 'test',
+        'aliases': ['foo', 'bar'],
+        'url': 'http://test.com',
+        'mac': '4711',
+        'capabilities': ['audio'],
+        'send_metadata': True
+    }
+
+    DEFAULT_FRIENDLY_NAME = 'Chekov'
+    DEFAULT_LOCATION = 'http://bla.foo'
+    DEFAULT_UDN = '123456789'
+
+    def _create_discoverable_player(self):
+        disc_player = MagicMock()
+        disc_player.friendly_name = self.DEFAULT_FRIENDLY_NAME
+        disc_player.location = self.DEFAULT_LOCATION
+        disc_player.udn = self.DEFAULT_UDN
+        
+        av_service = MagicMock()
+        av_service.name = 'AVTransport'
+        disc_player.services = [av_service]
+        
+        get_protocol_action = 'GetProtocolInfo'
+        disc_player.actions = [get_protocol_action]
+        
+        protocol = {'Sink': 'only-audio-and-image'}
+        disc_player.ConnectionManager.GetProtocolInfo.return_value = protocol
+        
+        return disc_player
+
+    def test_simple_configured_device(self):
+        p = configure(self.DEFAULT_CONFIG)
+
+        self.assertEqual('test', p.get_name())
+        self.assertEqual('http://test.com', p.get_url())
+        self.assertIsNone(p.get_id())
+        self.assertEqual('4711', p.get_mac())
+        self.assertEqual(True, p.include_metadata())
+
+        self.assertTrue(p.is_configured())
+        self.assertFalse(p.is_detected())
+        
+        self.assertTrue(p.can_play_type('audio'))
+        self.assertFalse(p.can_play_type('video'))
+        self.assertFalse(p.can_play_type('image'))
+
+        self.assertTrue('foo' in p.get_known_names())
+        self.assertTrue('bar' in p.get_known_names())
+
+    @patch('upnpclient.discover')
+    def test_simple_discovered(self, upnp_discover):
+        discoverable_player = self._create_discoverable_player()
+        upnp_discover.return_value = [discoverable_player]
+
+        players = discover()
+        self.assertEqual(1, len(players))
+        p = players[0]
+
+        self.assertEqual(self.DEFAULT_FRIENDLY_NAME, p.get_name())
+        self.assertEqual(self.DEFAULT_LOCATION, p.get_url())
+        self.assertEqual(self.DEFAULT_UDN, p.get_id())
+        self.assertIsNone(p.get_mac())
+        self.assertEqual(False, p.include_metadata())
+
+        self.assertFalse(p.is_configured())
+        self.assertTrue(p.is_detected())
+        
+        self.assertTrue(p.can_play_type('audio'))
+        self.assertFalse(p.can_play_type('video'))
+        self.assertTrue(p.can_play_type('image'))
+
+        self.assertTrue(self.DEFAULT_FRIENDLY_NAME in p.get_known_names())
+
+    @patch('upnpclient.discover')
+    def test_non_discoverable(self, upnp_discover):
+        discoverable_player = self._create_discoverable_player()
+
+        non_av_service = MagicMock()
+        non_av_service.name = 'No-real-service'
+        discoverable_player.services = [non_av_service]
+
+        upnp_discover.return_value = [discoverable_player]
+
+        players = discover()
+        self.assertEqual(0, len(players))
+
+    @patch('upnpclient.discover')
+    def test_non_capability_detectable(self, upnp_discover):
+        # test1: sink without any format -> no capabilities
+        discoverable_player = self._create_discoverable_player()
+        upnp_discover.return_value = [discoverable_player]
+        protocol = {'Sink': 'only-5d-cinema'}
+        discoverable_player.ConnectionManager.GetProtocolInfo.return_value = protocol
+
+        players = discover()
+        self.assertEqual(1, len(players))
+        p = players[0]
+        
+        self.assertFalse(p.can_play_type('audio'))
+        self.assertFalse(p.can_play_type('video'))
+        self.assertFalse(p.can_play_type('image'))
+
+        # tes2: no action defined -> no capabilities
+        discoverable_player = self._create_discoverable_player()
+        upnp_discover.return_value = [discoverable_player]
+        discoverable_player.actions = []
+        players = discover()
+        self.assertEqual(1, len(players))
+        p = players[0]
+        
+        self.assertFalse(p.can_play_type('audio'))
+        self.assertFalse(p.can_play_type('video'))
+        self.assertFalse(p.can_play_type('image'))
+
+    @patch('upnpclient.discover')
+    def test_all_capabilities(self, upnp_discover):
+
+        discoverable_player = self._create_discoverable_player()
+        upnp_discover.return_value = [discoverable_player]
+        protocol = {'Sink': 'audio-video-and-image'}
+        discoverable_player.ConnectionManager.GetProtocolInfo.return_value = protocol
+
+        players = discover()
+        self.assertEqual(1, len(players))
+        p = players[0]
+        
+        self.assertTrue(p.can_play_type('audio'))
+        self.assertTrue(p.can_play_type('video'))
+        self.assertTrue(p.can_play_type('image'))

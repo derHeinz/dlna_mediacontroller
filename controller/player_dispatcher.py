@@ -1,8 +1,10 @@
 from dataclasses import dataclass
 import logging
 
-from dlna.player import Player
-from dlna.renderer import Renderer
+from controller.player_wrapper import PlayerWrapper
+from controller.player_manager import PlayerManager
+from controller.scheduler import Scheduler
+from dlna.mediaserver import MediaServer
 from controller.integrator import Integrator
 from controller.data.command import PlayCommand, Command
 from controller.data.exceptions import RequestCannotBeHandeledException
@@ -15,7 +17,7 @@ logger = logging.getLogger(__file__)
 
 @dataclass
 class Mapping():
-    renderer: Renderer
+    player: PlayerWrapper
     integrator: Integrator
 
 
@@ -35,75 +37,74 @@ class PlayerDispatcher:
     as a default the first player is chosen.
     '''
 
-    _renderers_to_integrators: list[Mapping]
+    _players_to_integrators: list[Mapping]
+    _player_manager: PlayerManager
+    _media_server: MediaServer
+    _scheduler: Scheduler
 
-    def __init__(self, players: list[Player], media_server, scheduler) -> None:
-        self._renderers_to_integrators = []
-        for p in players:
-            i = Integrator(p, media_server, scheduler)
-            self._renderers_to_integrators.append(Mapping(renderer=p.get_renderer(), integrator=i))
+    def __init__(self, player_manager, media_server, scheduler) -> None:
+        self._players_to_integrators = []
+        self._player_manager = player_manager
+        self._media_server = media_server
+        self._scheduler = scheduler
 
-    def _renderer_from_target(self, target: str) -> Renderer:
+    def _player_from_target(self, target: str) -> PlayerWrapper | None:
         if target:
-            for m in self._renderers_to_integrators:
-                if target in m.renderer.get_known_names():
-                    return m.renderer
+            for p in self._player_manager.get_players():
+                if target in p.get_known_names():
+                    return p
         return None
 
-    def _renderer_for_type(self, type: str) -> Renderer:
+    def _player_for_type(self, type: str) -> PlayerWrapper | None:
         if (type):
-            for m in self._renderers_to_integrators:
-                if m.renderer.can_play_type(type):
-                    return m.renderer
+            for p in self._player_manager.get_players():
+                if p.can_play_type(type):
+                    return p
         return None
 
-    def _find_integrator_from_renderer(self, renderer) -> Integrator:
-        for m in self._renderers_to_integrators:
-            if m.renderer == renderer:
-
+    def _get_or_create_integrator(self, player) -> Integrator:
+        for m in self._players_to_integrators:
+            if m.player == player:
                 return m.integrator
 
-    def _renderer_available(self, renderer) -> bool:
-        if not renderer:
+        i = Integrator(player, self._media_server, self._scheduler)
+        self._players_to_integrators.append(i)
+        return i
+
+    def _player_available(self, player: PlayerWrapper) -> bool:
+        if not player:
             return False
-        if not ensure_online(renderer):
-            logger.debug(f"Renderer {renderer.get_name()} not online")
+        if not ensure_online(player):
+            logger.debug(f"Player {player.get_name()} not online")
             return False
         return True
 
     def _decide_integrator(self, command: Command) -> Integrator:
-
-        # renderer from command's target
+        # FIRST if it's explicitely mentioned: player from command's target
         if hasattr(command, 'target'):
-            renderer = self._renderer_from_target(command.target)
-            if renderer:
-                logger.debug(f"Found renderer {renderer.get_name()} from target")
-                if (self._renderer_available(renderer)):
-                    return self._find_integrator_from_renderer(renderer)
+            player = self._player_from_target(command.target)
+            if player:
+                logger.debug(f"Found player {player.get_name()} from target")
+                if (self._player_available(player)):
+                    return self._get_or_create_integrator(player)
                 else:
-                    msg = f"The requested renderer {command.target} is not available"
+                    msg = f"The requested player {command.target} is not available"
                     logger.error(msg)
                     raise RequestCannotBeHandeledException(msg)
 
-        # renderer from command's type
-        if hasattr(command, 'type') and command.type:
-            renderer = self._renderer_for_type(command.type)
-            if renderer:
-                logger.debug(f"Found renderer {renderer.get_name()} by type {command.type}")
-                if (self._renderer_available(renderer)):
-                    return self._find_integrator_from_renderer(renderer)
+        # SECOND, beginning from the first player,
+        # check through the list of players if one is available to play it on
+        for p in self._player_manager.get_players():
+            if hasattr(command, 'type') and command.type:
+                if not p.can_play_type(command.type):
+                    logger.debug(f"Cannot play on {p.get_name()} due to type restriction")
+                    continue
+            if (self._player_available(p)):
+                logger.debug(f"Using default player {p.get_name()}")
+                return self._get_or_create_integrator(p)
+            logger.debug(f"Cannot play on {p.get_name()} due to offline state")
 
-        # default renderer, check type if available
-        renderer = self._renderers_to_integrators[0].renderer
-        if hasattr(command, 'type') and command.type:
-            if not renderer.can_play_type(command.type):
-                msg = f"No renderer for type {command.type} available, default renderer cannot play this type"
-                logger.error(msg)
-                raise RequestCannotBeHandeledException(msg)
-        logger.debug(f"Using default renderer {renderer.get_name()}")
-        if (self._renderer_available(renderer)):
-            return self._renderers_to_integrators[0].integrator
-        msg = "No renderer available, default renderer unavailable"
+        msg = "No player available to play the media"
         logger.error(msg)
         raise RequestCannotBeHandeledException(msg)
 
@@ -124,8 +125,8 @@ class PlayerDispatcher:
         # todo we probably need a way to get the state of a particular player?!?
 
         # integrated state over all players
-        for m in self._renderers_to_integrators:
-            s = StatePerPlayer(m.renderer.get_name(), m.integrator.get_state())
+        for m in self._players_to_integrators:
+            s = StatePerPlayer(m.player.get_name(), m.integrator.get_state())
             res.append(s)
 
         return res
