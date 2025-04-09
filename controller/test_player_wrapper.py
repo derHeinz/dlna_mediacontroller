@@ -1,13 +1,7 @@
 import unittest
-from unittest.mock import patch, call, MagicMock
-from dataclasses import dataclass
+from unittest.mock import patch, MagicMock
 
-from controller.data.exceptions import RequestInvalidException
-from controller.data.command import PlayCommand
-from dlna.player import State as PlayerState, TRANSPORT_STATE
-from controller.data.state import State
-from controller.integrator import Integrator
-from controller.player_wrapper import PlayerWrapper, configure, discover
+from controller.player_wrapper import configure, discover
 
 
 class TestPlayerWrapper(unittest.TestCase):
@@ -31,17 +25,17 @@ class TestPlayerWrapper(unittest.TestCase):
         disc_player.friendly_name = self.DEFAULT_FRIENDLY_NAME
         disc_player.location = self.DEFAULT_LOCATION
         disc_player.udn = self.DEFAULT_UDN
-        
+
         av_service = MagicMock()
         av_service.name = 'AVTransport'
         disc_player.services = [av_service]
-        
+
         get_protocol_action = 'GetProtocolInfo'
         disc_player.actions = [get_protocol_action]
-        
+
         protocol = {'Sink': 'only-audio-and-image'}
         disc_player.ConnectionManager.GetProtocolInfo.return_value = protocol
-        
+
         return disc_player
 
     def test_simple_configured_device(self):
@@ -55,7 +49,7 @@ class TestPlayerWrapper(unittest.TestCase):
 
         self.assertTrue(p.is_configured())
         self.assertFalse(p.is_detected())
-        
+
         self.assertTrue(p.can_play_type('audio'))
         self.assertFalse(p.can_play_type('video'))
         self.assertFalse(p.can_play_type('image'))
@@ -80,7 +74,7 @@ class TestPlayerWrapper(unittest.TestCase):
 
         self.assertFalse(p.is_configured())
         self.assertTrue(p.is_detected())
-        
+
         self.assertTrue(p.can_play_type('audio'))
         self.assertFalse(p.can_play_type('video'))
         self.assertTrue(p.can_play_type('image'))
@@ -111,7 +105,7 @@ class TestPlayerWrapper(unittest.TestCase):
         players = discover()
         self.assertEqual(1, len(players))
         p = players[0]
-        
+
         self.assertFalse(p.can_play_type('audio'))
         self.assertFalse(p.can_play_type('video'))
         self.assertFalse(p.can_play_type('image'))
@@ -123,7 +117,7 @@ class TestPlayerWrapper(unittest.TestCase):
         players = discover()
         self.assertEqual(1, len(players))
         p = players[0]
-        
+
         self.assertFalse(p.can_play_type('audio'))
         self.assertFalse(p.can_play_type('video'))
         self.assertFalse(p.can_play_type('image'))
@@ -139,7 +133,7 @@ class TestPlayerWrapper(unittest.TestCase):
         players = discover()
         self.assertEqual(1, len(players))
         p = players[0]
-        
+
         self.assertTrue(p.can_play_type('audio'))
         self.assertTrue(p.can_play_type('video'))
         self.assertTrue(p.can_play_type('image'))

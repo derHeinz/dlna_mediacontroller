@@ -1,6 +1,6 @@
 import unittest
 
-from main import  setup_logging, create_media_servers
+from main import setup_logging, create_media_servers
 
 
 class TestMain(unittest.TestCase):

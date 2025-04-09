@@ -92,7 +92,7 @@ class State():
             if (artist):
                 msg += " etwas von " + artist
         return msg
-    
+
     def is_url_mode(self):
         """url mode plays the same url, differece to item_mode"""
         if self.current_command is None:

@@ -1,5 +1,4 @@
 import unittest
-from dataclasses import dataclass
 
 from controller.data.state import State
 from controller.data.command import PlayCommand
@@ -10,11 +9,14 @@ DEFAULT_TITLE = 'some-title'
 DEFAULT_ARTIST = 'artist-to-sing-a-song'
 
 
-@dataclass
-class TestItem:
+class MyItem(object):
 
     title: str
     artist: str
+
+    def __init__(self, title, artist):
+        self.title = title
+        self.artist = artist
 
     def get_title(self):
         return self.title
@@ -27,10 +29,10 @@ class TestState(unittest.TestCase):
 
     def _testee(self) -> State:
         return State()
-    
+
     def _url_cmd(self):
         return PlayCommand(url=DEFAULT_URL)
-    
+
     def _non_url_cmd(self):
         return PlayCommand(title=DEFAULT_TITLE)
 
@@ -68,7 +70,7 @@ class TestState(unittest.TestCase):
         # always issue command before playing...
         cmd = PlayCommand(title=DEFAULT_TITLE)
         t.command(cmd)
-        t.now_playing(None, TestItem(DEFAULT_TITLE, DEFAULT_ARTIST))
+        t.now_playing(None, MyItem(DEFAULT_TITLE, DEFAULT_ARTIST))
 
         self.assertEqual(t.current_command, cmd)
 
@@ -85,11 +87,11 @@ class TestState(unittest.TestCase):
         # always issue command before playing...
         cmd = PlayCommand(artist=DEFAULT_ARTIST, loop=True)
         t.command(cmd)
-        t.now_playing(None, TestItem(DEFAULT_TITLE, DEFAULT_ARTIST))
+        t.now_playing(None, MyItem(DEFAULT_TITLE, DEFAULT_ARTIST))
 
         self.assertEqual(t.running, True)
 
-        t.next_play(None, TestItem('asdf', DEFAULT_ARTIST))
+        t.next_play(None, MyItem('asdf', DEFAULT_ARTIST))
         t.next_track_is_playing()
 
         self.assertEqual(t.running, True)
@@ -115,5 +117,3 @@ class TestState(unittest.TestCase):
         self.assertEqual(t.played_count, 0)
         self.assertEqual(t.description, "Aus")
         self.assertEqual(t.stop_reason, 'paused')
-
-

@@ -16,7 +16,7 @@ class TestPlayerManager(unittest.TestCase):
         # mock the configured players
         m._players = [self.PLAYER_A, self.PLAYER_B]
         return m
-    
+
     @patch("controller.player_manager.configure")
     def test_constructor(self, configure):
 
@@ -24,8 +24,8 @@ class TestPlayerManager(unittest.TestCase):
         configure.assert_called()
         self.SCHEDULER.start_job.assert_called_with('PLAYER_DISCOVERY', m._run_discovery, m.DEFAULT_DISCOVERY_INTERVAL)
 
-        self.assertEquals(self.PLAYER_A, m.get_players()[0])
-        self.assertEquals(self.PLAYER_B, m.get_players()[1])
+        self.assertEqual(self.PLAYER_A, m.get_players()[0])
+        self.assertEqual(self.PLAYER_B, m.get_players()[1])
 
     @patch("controller.player_manager.discover")
     @patch("controller.player_manager.configure")
@@ -37,9 +37,9 @@ class TestPlayerManager(unittest.TestCase):
         new_discoverable_player.get_url.return_value = 'URL'
         discover.return_value = [new_discoverable_player]
 
-        self.assertEquals(2, len(m.get_players()))
+        self.assertEqual(2, len(m.get_players()))
         m._run_discovery()
-        self.assertEquals(3, len(m.get_players()))
+        self.assertEqual(3, len(m.get_players()))
         self.assertEqual(new_discoverable_player, m.get_players()[2])
 
     @patch("controller.player_manager.discover")
@@ -54,9 +54,9 @@ class TestPlayerManager(unittest.TestCase):
         new_discoverable_player_B.get_url.return_value = 'URL2'
         discover.return_value = [new_discoverable_player_A, new_discoverable_player_B]
 
-        self.assertEquals(2, len(m.get_players()))
+        self.assertEqual(2, len(m.get_players()))
         m._run_discovery()
-        self.assertEquals(4, len(m.get_players()))
+        self.assertEqual(4, len(m.get_players()))
         self.assertEqual(new_discoverable_player_A, m.get_players()[2])
         self.assertEqual(new_discoverable_player_B, m.get_players()[3])
 
@@ -77,9 +77,9 @@ class TestPlayerManager(unittest.TestCase):
         new_discoverable_player_B.get_url.return_value = 'URL2'
         discover.return_value = [new_discoverable_player_A, new_discoverable_player_B]
 
-        self.assertEquals(2, len(m.get_players()))
+        self.assertEqual(2, len(m.get_players()))
         m._run_discovery()
-        self.assertEquals(2, len(m.get_players()))
+        self.assertEqual(2, len(m.get_players()))
 
     @patch("controller.player_manager.discover")
     @patch("controller.player_manager.configure")
@@ -103,12 +103,11 @@ class TestPlayerManager(unittest.TestCase):
         # define discovered device
         discover.return_value = [new_discoverable_player]
 
-        self.assertEquals(2, len(m.get_players()))
+        self.assertEqual(2, len(m.get_players()))
         m._run_discovery()
-        self.assertEquals(2, len(m.get_players()))
+        self.assertEqual(2, len(m.get_players()))
 
         p2 = m.get_players()[1]
-        self.assertEquals(new_discoverable_player._detected_meta, p2._detected_meta)
-        self.assertEquals(new_discoverable_player._last_seen, p2._last_seen)
-        self.assertEquals(new_discoverable_player._dlna_player, p2._dlna_player)
-    
+        self.assertEqual(new_discoverable_player._detected_meta, p2._detected_meta)
+        self.assertEqual(new_discoverable_player._last_seen, p2._last_seen)
+        self.assertEqual(new_discoverable_player._dlna_player, p2._dlna_player)

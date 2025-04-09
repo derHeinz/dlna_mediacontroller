@@ -8,6 +8,7 @@ from dlna.player import Player
 
 logger = logging.getLogger(__file__)
 
+
 @dataclass
 class PlayerMetadata():
     ''' A meta-object containing information about a player
@@ -20,10 +21,11 @@ class PlayerMetadata():
     capabilities: list[str] = field(default_factory=list)
     send_metadata: bool = False
 
+
 class PlayerWrapper():
     ''' An object wrapping a player including it's discovered metadata,
     in case it's configured also it's configured metadata.
-    And direct access to the player object to do sth. with the player like 
+    And direct access to the player object to do sth. with the player like
     playing a music peace.
     '''
 
@@ -34,20 +36,20 @@ class PlayerWrapper():
     _dlna_player: Player = None
 
     _upnp_device: upnpclient.Device = None
-       
+
     def _get_attr_preferred(self, attr):
         if self._configured_meta is not None and getattr(self._configured_meta, attr) is not None:
             return getattr(self._configured_meta, attr)
         elif self._detected_meta is not None and getattr(self._detected_meta, attr) is not None:
             return getattr(self._detected_meta, attr)
         return None
-    
+
     def is_configured(self):
         return self._configured_meta is not None
-    
+
     def is_detected(self):
         return self._detected_meta is not None
-    
+
     def get_known_names(self) -> list[str]:
         res = []
         if self.is_configured():
@@ -61,7 +63,7 @@ class PlayerWrapper():
             if self._detected_meta.aliases is not None:
                 res.extend(self._detected_meta.aliases)
         return res
-    
+
     def can_play_type(self, type: str) -> bool:
         # create types list
         caps = []
@@ -87,10 +89,10 @@ class PlayerWrapper():
 
     def get_url(self) -> str:
         return self._get_attr_preferred('url')
-    
+
     def get_id(self) -> str:
         return self._get_attr_preferred('id')
-    
+
     def get_dlna_player(self) -> Player:
         if self._dlna_player is None:
             # ensure device
@@ -99,7 +101,7 @@ class PlayerWrapper():
         return self._dlna_player
 
 
-def _discover_players() -> list[upnpclient.Device] :
+def _discover_players() -> list[upnpclient.Device]:
     all_devices = upnpclient.discover()
 
     for d in all_devices:
@@ -107,11 +109,11 @@ def _discover_players() -> list[upnpclient.Device] :
 
     def has_av_transport_service(d):
         for s in d.services:
-            #logger.debug(f"- device contains service {s}")
             if 'AVTransport' == s.name:
                 return True
         return False
     return list(filter(has_av_transport_service, all_devices))
+
 
 def _detect_capabilities(device: upnpclient.Device):
     detected_capabilities = []
@@ -127,6 +129,7 @@ def _detect_capabilities(device: upnpclient.Device):
                 detected_capabilities.append('image')
     return detected_capabilities
 
+
 def _create_configured(config: dict) -> 'PlayerWrapper':
     configured_meta = PlayerMetadata(**config)
     pw = PlayerWrapper()
@@ -137,9 +140,10 @@ def _create_configured(config: dict) -> 'PlayerWrapper':
     pw._dlna_player = None  # TODO check how PlayerWrapper and Player interact...
     return pw
 
+
 def _create_discovered(device: upnpclient.Device) -> 'PlayerWrapper':
     discovered_meta = PlayerMetadata(name=device.friendly_name, url=device.location, id=device.udn,
-                            capabilities=_detect_capabilities(device))
+                                     capabilities=_detect_capabilities(device))
     pw = PlayerWrapper()
     pw._last_seen = datetime.now()
     pw._configured_meta = None
@@ -148,12 +152,14 @@ def _create_discovered(device: upnpclient.Device) -> 'PlayerWrapper':
     pw._dlna_player = None  # TODO check how PlayerWrapper and Player interact...
     return pw
 
+
 def discover() -> list[PlayerWrapper]:
     devices = _discover_players()
     res = []
     for d in devices:
         res.append(_create_discovered(d))
     return res
+
 
 def configure(config) -> PlayerWrapper:
     return _create_configured(config)

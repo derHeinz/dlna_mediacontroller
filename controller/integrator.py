@@ -14,7 +14,7 @@ from dlna.mediaserver import MediaServer
 logger = logging.getLogger(__file__)
 
 
-RUNNING_STATE = Enum('RunningState', ['RUNNING_CURRENT', 'RUNNING_NEXT', 
+RUNNING_STATE = Enum('RunningState', ['RUNNING_CURRENT', 'RUNNING_NEXT',
                                       'STOPPED', 'INTERRUPTED', 'UNKNOWN'])
 
 NEXT_MEDIA_STATE = Enum('NextMediaState', ['SET', 'UNSET'])
@@ -123,7 +123,7 @@ class Integrator():
                     logger.debug("next media to play is unset, setting next media")
                     self._set_next_track()
                 return
-        
+
             if RUNNING_STATE.RUNNING_NEXT == run_state:
                 logger.debug("running the next media")
                 if self._state.looping:

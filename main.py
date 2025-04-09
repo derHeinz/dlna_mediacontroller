@@ -7,8 +7,6 @@ from controller.scheduler import Scheduler
 from controller.player_dispatcher import PlayerDispatcher
 from controller.player_manager import PlayerManager
 
-from dlna.player import Player
-from dlna.renderer import Renderer
 from dlna.mediaserver import MediaServer
 
 logger = logging.getLogger(__file__)

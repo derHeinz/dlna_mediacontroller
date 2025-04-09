@@ -7,6 +7,7 @@ from controller.player_wrapper import PlayerWrapper
 from controller.data.command import Command, PlayCommand
 from controller.data.exceptions import RequestCannotBeHandeledException
 
+
 class FakeServer:
 
     def __init__(self, name):
@@ -74,7 +75,7 @@ class TestPlayerDispatcher(unittest.TestCase):
         i = integrator_constructor.return_value
 
         self._testee().pause(Command('B'))
-        
+
         integrator_constructor.assert_called_with(self.FAKE_PLAYER_B, self.FAKE_SERVER, self.FAKE_SCHEDULER)
         i.pause.assert_called_with()
         ensure_online.assert_called_with(self.FAKE_PLAYER_B)
@@ -142,7 +143,7 @@ class TestPlayerDispatcher(unittest.TestCase):
 
         with self.assertRaises(RequestCannotBeHandeledException):
             self._testee().play(PlayCommand(url=self.DEFAULT_URL, type='asfd'))
-            
+
         integrator_constructor.assert_not_called()
         i.play.assert_not_called()
         ensure_online.assert_not_called()

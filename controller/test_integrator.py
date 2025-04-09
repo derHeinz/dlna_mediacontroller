@@ -52,10 +52,10 @@ class FakeServer:
 
 class TestIntegratorBase(unittest.TestCase):
 
-    DEFAULT_URL = 'a-track'
-    DEFAULT_PLAYER_NAME = 'TestPlayer'
-    DEFAULT_PLAYER_SCHEDULER_NAME = 'Media_Observer_' + DEFAULT_PLAYER_NAME
-    DEFAULT_SCHEDULER_INTERVAL = 10
+    URL = 'a-track'
+    PLAYER_NAME = 'TestPlayer'
+    SCHEDULER_NAME = 'Media_Observer_' + PLAYER_NAME
+    SCHEDULER_INTERVAL = 10
 
     PLAYER: MagicMock
     PLAYER_DLNA: MagicMock
@@ -69,7 +69,7 @@ class TestIntegratorBase(unittest.TestCase):
 
     def _testee(self):
         self.PLAYER = MagicMock()
-        self.PLAYER.get_name.return_value = self.DEFAULT_PLAYER_NAME
+        self.PLAYER.get_name.return_value = self.PLAYER_NAME
         self.PLAYER_DLNA = MagicMock()
         self.PLAYER.get_dlna_player.return_value = self.PLAYER_DLNA
 
@@ -83,7 +83,7 @@ class TestIntegratorBase(unittest.TestCase):
     def _assert_state(self, state: State, current_command=None, running=False, looping=False,
                       last_played_url=None, last_played_artist=None, last_played_title=None, played_count=0,
                       next_play_url=None, next_play_item=None, description="Aus", stop_reason=None):
-        
+
         # first check internal state
         if current_command is not None:
             self.assertEqual(current_command.url, state.current_command.url)
@@ -113,13 +113,13 @@ class TestIntegratorBase(unittest.TestCase):
         self.assertEqual(stop_reason, view.stop_reason)
 
     def _initial_play_url(self, integrator: Integrator, loop=False):
-        cmd = PlayCommand(url=self.DEFAULT_URL, artist=None, title=None, loop=loop)
+        cmd = PlayCommand(url=self.URL, artist=None, title=None, loop=loop)
         res = integrator.play(cmd)
-        dsc = "Wiederholt " + self.DEFAULT_URL if loop else "Spielt " + self.DEFAULT_URL
-        kwargs = {'current_command': cmd, 'last_played_url': self.DEFAULT_URL,
+        dsc = "Wiederholt " + self.URL if loop else "Spielt " + self.URL
+        kwargs = {'current_command': cmd, 'last_played_url': self.URL,
                   'running': True, 'played_count': 1, 'description': dsc, 'looping': loop}
         if loop:
-            kwargs['next_play_url'] = self.DEFAULT_URL
+            kwargs['next_play_url'] = self.URL
         self._assert_state(integrator._state, **kwargs)
         return res
 
@@ -132,7 +132,7 @@ class TestIntegratorBase(unittest.TestCase):
         if command.loop:
             kwargs['next_play_url'] = self.DEFAULT_ITEM.url if next_item is None else next_item.url
             kwargs['next_play_item'] = self.DEFAULT_ITEM if next_item is None else next_item
-        
+
         self._assert_state(integrator._state, **kwargs)
         self.assertEqual(res, integrator._state.view())
         return res
@@ -170,7 +170,7 @@ class TestIntegratorOtherFunctions(TestIntegratorBase):
         res = i.pause()
         self.SCHEDULER.stop_job.assert_called()
 
-        self._assert_state(i._state, last_played_url=self.DEFAULT_URL, running=False, stop_reason="pause invoked")
+        self._assert_state(i._state, last_played_url=self.URL, running=False, stop_reason="pause invoked")
         self.assertEqual(res, i._state.view())
 
     def test_pause_error(self):
@@ -180,7 +180,7 @@ class TestIntegratorOtherFunctions(TestIntegratorBase):
         with self.assertRaises(OSError):
             i.pause()
         self._assert_state(i._state, stop_reason="exception in pause: test-error")
-        self.SCHEDULER.stop_job.assert_has_calls([call(self.DEFAULT_PLAYER_SCHEDULER_NAME)])
+        self.SCHEDULER.stop_job.assert_has_calls([call(self.SCHEDULER_NAME)])
         self.SCHEDULER.start_job.assert_not_called()
 
     def test_stop(self):
@@ -188,7 +188,7 @@ class TestIntegratorOtherFunctions(TestIntegratorBase):
 
         self._initial_play_url(i)
         res = i.stop()
-        self._assert_state(i._state, last_played_url=self.DEFAULT_URL, running=False, stop_reason="stop invoked")
+        self._assert_state(i._state, last_played_url=self.URL, running=False, stop_reason="stop invoked")
         self.assertEqual(res, i._state.view())
 
     def test_stop_error(self):
@@ -198,7 +198,7 @@ class TestIntegratorOtherFunctions(TestIntegratorBase):
         with self.assertRaises(OSError):
             i.stop()
         self._assert_state(i._state, stop_reason="exception in stop: test-error")
-        self.SCHEDULER.stop_job.assert_has_calls([call(self.DEFAULT_PLAYER_SCHEDULER_NAME)])
+        self.SCHEDULER.stop_job.assert_has_calls([call(self.SCHEDULER_NAME)])
         self.SCHEDULER.start_job.assert_not_called()
 
 
@@ -217,9 +217,9 @@ class TestIntegratorPlayFunctions(TestIntegratorBase):
 
         self.PLAYER_DLNA.play.side_effect = OSError("test-error")
         with self.assertRaises(OSError):
-            i.play(PlayCommand(url=self.DEFAULT_URL, artist=None, title=None, loop=True))
+            i.play(PlayCommand(url=self.URL, artist=None, title=None, loop=True))
         self._assert_state(i._state, stop_reason="exception in play: test-error")
-        self.SCHEDULER.stop_job.assert_has_calls([call(self.DEFAULT_PLAYER_SCHEDULER_NAME)])
+        self.SCHEDULER.stop_job.assert_has_calls([call(self.SCHEDULER_NAME)])
         self.SCHEDULER.start_job.assert_not_called()
 
     @patch("controller.test_integrator.FakeServer.search")
@@ -232,7 +232,7 @@ class TestIntegratorPlayFunctions(TestIntegratorBase):
         self._initial_play_item(i, PlayCommand(title='must go'))
 
         mediaserver_search_mock.assert_called_with(title='must go')
-        self.SCHEDULER.stop_job.assert_called_with(self.DEFAULT_PLAYER_SCHEDULER_NAME)
+        self.SCHEDULER.stop_job.assert_called_with(self.SCHEDULER_NAME)
         self.PLAYER_DLNA.play.assert_called_with(self.DEFAULT_ITEM.url, item=self.DEFAULT_ITEM)
 
     @patch("controller.test_integrator.FakeServer.search")
@@ -247,7 +247,7 @@ class TestIntegratorPlayFunctions(TestIntegratorBase):
         self.assertEqual(res, i._state.view())
 
         mediaserver_search_mock.assert_called_with(title='must go')
-        self.SCHEDULER.stop_job.assert_called_with(self.DEFAULT_PLAYER_SCHEDULER_NAME)
+        self.SCHEDULER.stop_job.assert_called_with(self.SCHEDULER_NAME)
         self.PLAYER_DLNA.play.assert_not_called()
 
         self._assert_state(i._state, stop_reason="nothing found in media server")
@@ -298,14 +298,14 @@ class TestIntegratorPlayFunctions(TestIntegratorBase):
         i = self._testee()
 
         self._initial_play_url(i)
-        self.SCHEDULER.start_job.assert_has_calls([call(self.DEFAULT_PLAYER_SCHEDULER_NAME, i._loop_process, self.DEFAULT_SCHEDULER_INTERVAL)])
-        self.SCHEDULER.stop_job.assert_has_calls([call(self.DEFAULT_PLAYER_SCHEDULER_NAME)])
+        self.SCHEDULER.start_job.assert_has_calls([call(self.SCHEDULER_NAME, i._loop_process, self.SCHEDULER_INTERVAL)])
+        self.SCHEDULER.stop_job.assert_has_calls([call(self.SCHEDULER_NAME)])
         self.PLAYER_DLNA.play.assert_has_calls([call('a-track')])
 
         # first loop, stop playing
         self.PLAYER_DLNA.get_state.return_value = PlayerState(transport_state=TRANSPORT_STATE.STOPPED,
-                                                         current_url='a-track', progress_count=0,
-                                                         next_url=None)
+                                                              current_url='a-track', progress_count=0,
+                                                              next_url=None)
 
         i._loop_process()
         self.PLAYER_DLNA.get_state.assert_has_calls([call()])
@@ -315,16 +315,16 @@ class TestIntegratorPlayFunctions(TestIntegratorBase):
     def test_play_url_with_loops(self):
         i = self._testee()
 
-        cmd = PlayCommand(url=self.DEFAULT_URL, loop=True)
+        cmd = PlayCommand(url=self.URL, loop=True)
         self._initial_play_url(i, True)
-        self.SCHEDULER.start_job.assert_has_calls([call(self.DEFAULT_PLAYER_SCHEDULER_NAME, i._loop_process, self.DEFAULT_SCHEDULER_INTERVAL)])
-        self.SCHEDULER.stop_job.assert_has_calls([call(self.DEFAULT_PLAYER_SCHEDULER_NAME)])
+        self.SCHEDULER.start_job.assert_has_calls([call(self.SCHEDULER_NAME, i._loop_process, self.SCHEDULER_INTERVAL)])
+        self.SCHEDULER.stop_job.assert_has_calls([call(self.SCHEDULER_NAME)])
         self.PLAYER_DLNA.play.assert_has_calls([call('a-track')])
 
         # first loop, still playing
         self.PLAYER_DLNA.get_state.return_value = PlayerState(transport_state=TRANSPORT_STATE.PLAYING,
-                                                         current_url='a-track', progress_count=42,
-                                                         next_url=None)
+                                                              current_url='a-track', progress_count=42,
+                                                              next_url=None)
 
         i._loop_process()
         self.PLAYER_DLNA.get_state.assert_has_calls([call()])
@@ -340,7 +340,7 @@ class TestIntegratorPlayFunctions(TestIntegratorBase):
         i._loop_process()
         self.PLAYER_DLNA.get_state.assert_has_calls([call()])
         self.PLAYER_DLNA.play.assert_has_calls([call('a-track')])  # play track again
-        self._assert_state(i._state, current_command=cmd, 
+        self._assert_state(i._state, current_command=cmd,
                            last_played_url='a-track', next_play_url='a-track',
                            running=True, played_count=2, looping=True,
                            description="Wiederholt a-track")
@@ -385,9 +385,9 @@ class TestIntegratorPlayFunctions(TestIntegratorBase):
 
         i._loop_process()
         self.PLAYER_DLNA.get_state.assert_has_calls([call()])
-        self.SCHEDULER.stop_job.assert_called_with(self.DEFAULT_PLAYER_SCHEDULER_NAME)
+        self.SCHEDULER.stop_job.assert_called_with(self.SCHEDULER_NAME)
         self.SCHEDULER.start_job.assert_not_called()
-        self._assert_state(i._state, running=False, looping=False, last_played_url=self.DEFAULT_URL, stop_reason="interrupted")
+        self._assert_state(i._state, running=False, looping=False, last_played_url=self.URL, stop_reason="interrupted")
 
     def test_play_url_with_loops_different_media(self):
         i = self._testee()
@@ -401,9 +401,9 @@ class TestIntegratorPlayFunctions(TestIntegratorBase):
 
         i._loop_process()
         self.PLAYER_DLNA.get_state.assert_has_calls([call()])
-        self.SCHEDULER.stop_job.assert_called_with(self.DEFAULT_PLAYER_SCHEDULER_NAME)
+        self.SCHEDULER.stop_job.assert_called_with(self.SCHEDULER_NAME)
         self.SCHEDULER.start_job.assert_not_called()
-        self._assert_state(i._state, running=False, last_played_url=self.DEFAULT_URL, description="Aus",
+        self._assert_state(i._state, running=False, last_played_url=self.URL, description="Aus",
                            stop_reason="interrupted")
 
     def test_play_url_with_loops_stopped_unnaturally(self):
@@ -414,13 +414,13 @@ class TestIntegratorPlayFunctions(TestIntegratorBase):
         # first loop, interrupted due to unnaturally stoppage
         self.SCHEDULER.reset_mock()
         self.PLAYER_DLNA.get_state.reset_mock()
-        self.PLAYER_DLNA.get_state.return_value = PlayerState(TRANSPORT_STATE.STOPPED, self.DEFAULT_URL, None, 47)
+        self.PLAYER_DLNA.get_state.return_value = PlayerState(TRANSPORT_STATE.STOPPED, self.URL, None, 47)
 
         i._loop_process()
         self.PLAYER_DLNA.get_state.assert_has_calls([call()])
-        self.SCHEDULER.stop_job.assert_called_with(self.DEFAULT_PLAYER_SCHEDULER_NAME)
+        self.SCHEDULER.stop_job.assert_called_with(self.SCHEDULER_NAME)
         self.SCHEDULER.start_job.assert_not_called()
-        self._assert_state(i._state, running=False, looping=False, last_played_url=self.DEFAULT_URL, description="Aus",
+        self._assert_state(i._state, running=False, looping=False, last_played_url=self.URL, description="Aus",
                            stop_reason="interrupted")
 
     @patch("controller.test_integrator.FakeServer.search")
@@ -437,14 +437,14 @@ class TestIntegratorPlayFunctions(TestIntegratorBase):
         mediaserver_search_mock.reset_mock()
 
         # play url
-        cmd_2 = PlayCommand(url=self.DEFAULT_URL, artist=None, title=None, loop=False)
+        cmd_2 = PlayCommand(url=self.URL, artist=None, title=None, loop=False)
         res = i.play(cmd_2)
-        self._assert_state(i._state, current_command=cmd_2, running=True, last_played_url=self.DEFAULT_URL,
+        self._assert_state(i._state, current_command=cmd_2, running=True, last_played_url=self.URL,
                            played_count=1, description="Spielt a-track")
         self.assertEqual(res, i._state.view())
 
-        self.PLAYER_DLNA.play.assert_has_calls([call(self.DEFAULT_URL)])
-        self.SCHEDULER.stop_job.assert_has_calls([call(self.DEFAULT_PLAYER_SCHEDULER_NAME)])
+        self.PLAYER_DLNA.play.assert_has_calls([call(self.URL)])
+        self.SCHEDULER.stop_job.assert_has_calls([call(self.SCHEDULER_NAME)])
         self.SCHEDULER.start_job.assert_called_once()
         mediaserver_search_mock.assert_not_called()
 
@@ -486,13 +486,13 @@ class TestIntegratorPlayFunctions(TestIntegratorBase):
         self.SCHEDULER.reset_mock()
         mediaserver_search_mock.reset_mock()
 
-        cmd_2 = PlayCommand(url=self.DEFAULT_URL)
+        cmd_2 = PlayCommand(url=self.URL)
         res = i.play(cmd_2)
-        self._assert_state(i._state, current_command=cmd_2, last_played_url=self.DEFAULT_URL, running=True, played_count=1,
+        self._assert_state(i._state, current_command=cmd_2, last_played_url=self.URL, running=True, played_count=1,
                            description="Spielt a-track")
         self.assertEqual(res, i._state.view())
 
-        self.PLAYER_DLNA.play.assert_called_with(self.DEFAULT_URL)
+        self.PLAYER_DLNA.play.assert_called_with(self.URL)
         self.SCHEDULER.stop_job.assert_called()
         self.SCHEDULER.start_job.assert_called()
         mediaserver_search_mock.assert_not_called()
@@ -510,7 +510,7 @@ class TestIntegratorPlayFunctions(TestIntegratorBase):
         with self.assertRaises(OSError):
             i._loop_process()
         self.PLAYER_DLNA.get_state.assert_has_calls([call()])
-        self.SCHEDULER.stop_job.assert_called_with(self.DEFAULT_PLAYER_SCHEDULER_NAME)
+        self.SCHEDULER.stop_job.assert_called_with(self.SCHEDULER_NAME)
         self._assert_state(i._state, last_played_url='a-track', running=False, description='Aus',
                            stop_reason="exception in looping: test-error")
 

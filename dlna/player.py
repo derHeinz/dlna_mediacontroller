@@ -13,6 +13,7 @@ TRANSPORT_STATE = Enum('TransportState', ['STOPPED', 'PLAYING', 'TRANSITIONING',
 
 logger = logging.getLogger(__file__)
 
+
 @dataclass
 class State():
     transport_state: TRANSPORT_STATE
@@ -50,7 +51,7 @@ class Player():
                        ord('ö'): 'oe', ord('Ö'): 'Oe',
                        ord('ü'): 'ue', ord('Ü'): 'Ue',
                        ord('ß'): 'ss'}
-    
+
     _device: upnpclient.Device
     _include_metadata: bool
 
