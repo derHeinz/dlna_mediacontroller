@@ -1,6 +1,6 @@
 import unittest
 
-from main import create_players, validate_players, setup_logging, create_media_servers
+from main import  setup_logging, create_media_servers
 
 
 class TestMain(unittest.TestCase):
@@ -14,27 +14,6 @@ class TestMain(unittest.TestCase):
 
     def test_run_setup_logging(self):
         setup_logging()
-
-    def test_create_players(self):
-        res = create_players(renderers_config=self.RENDERER_CFG)
-        self.assertEqual(2, len(res))
-        self.assertEqual("Ex 1", res[0].get_name())
-        self.assertEqual("Ex 2", res[1].get_name())
-
-    def test_validate_players(self):
-        res = create_players(renderers_config=self.RENDERER_CFG)
-        validate_players(res)
-
-        with self.assertRaises(ValueError):
-            validate_players(None)
-
-        with self.assertRaises(ValueError):
-            validate_players([])
-
-        res[0].get_renderer()._name = 'asdf'
-        res[1].get_renderer()._aliases[0] = 'asdf'
-        with self.assertRaises(ValueError):
-            validate_players(res)
 
     def test_create_mediaplayers(self):
         media_players_cfg = [

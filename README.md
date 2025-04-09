@@ -25,9 +25,12 @@ It is somehow interconnected to these other projects of mine:
 - [x] should also observe "non-looping" playback, because it otherways thinks it's always running!
 - [x] play should return a "description" describing the current state (e.g. 'spiele Lieder von Queen').
 - [x] possibility to control 2 or more media renderers.
+- [x] wake-on-lan for renderers in standby mode.
 - [x] ability to search/play video also
 - [x] use dlna/upnpn library, for fewer code: upnpclient
 - [x] use "SetNextAVTransportURI" for smoother transitions between tracks
-- [ ] allow several media servers
+- [ ] allow several media servers to be searched
+- [x] detect renderers (and their capabilities) and media servers via udp discovery
+- [ ] detect mac address from discovered devices
 - [ ] handle (connection) errors when communicating to player (get_state, play, pause, stop)
 - [ ] handle (connection) errors when communicating to mediaserver -> and return text "cannot find on mediaserver" or sth.

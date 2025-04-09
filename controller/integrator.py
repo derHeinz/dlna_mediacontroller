@@ -2,12 +2,13 @@ import logging
 from enum import Enum
 from typing import Tuple
 
+from controller.player_wrapper import PlayerWrapper
 from controller.data.state import State, StateView
 from controller.data.command import PlayCommand
 from controller.scheduler import Scheduler
 from controller.data.exceptions import RequestInvalidException
 
-from dlna.player import Player, TRANSPORT_STATE
+from dlna.player import TRANSPORT_STATE
 from dlna.mediaserver import MediaServer
 
 logger = logging.getLogger(__file__)
@@ -24,11 +25,11 @@ class Integrator():
     DEFAULT_CHECK_INTERVAL = 10
 
     _state: State
-    _player: Player
+    _player: PlayerWrapper
     _media_server: MediaServer
     _scheduler: Scheduler
 
-    def __init__(self, player: Player, media_server: MediaServer, scheduler: Scheduler) -> None:
+    def __init__(self, player: PlayerWrapper, media_server: MediaServer, scheduler: Scheduler) -> None:
         self._player = player
         self._media_server = media_server
         self._state: State = State()
@@ -58,7 +59,7 @@ class Integrator():
         if self._state.is_url_mode():
             # this mode always plays the same url
             logger.debug('next playing without item')
-            self._player.set_next(self._state.current_command.url)
+            self._player.get_dlna_player().set_next(self._state.current_command.url)
             self._state.next_play(self._state.current_command.url, None)
             return
 
@@ -72,7 +73,7 @@ class Integrator():
             url = item.get_url()
 
             logger.debug(f"next with item {item}")
-            self._player.set_next(url, item=item)
+            self._player.get_dlna_player().set_next(url, item=item)
             self._state.next_play(url, item)
         else:
             # this is very unlikely, as we must have come across in the previous call to _play_next_track
@@ -83,7 +84,7 @@ class Integrator():
         if self._state.is_url_mode():
             # this mode always plays the same url
             logger.debug('playing without item')
-            self._player.play(self._state.current_command.url)
+            self._player.get_dlna_player().play(self._state.current_command.url)
             self._state.now_playing(self._state.current_command.url, None)
             if self._state.looping:
                 self._set_next_track()
@@ -96,7 +97,7 @@ class Integrator():
             item = self._state.search_response.random_item()
             url = item.get_url()
 
-            self._player.play(url, item=item)
+            self._player.get_dlna_player().play(url, item=item)
             self._state.now_playing(url, item)
             if self._state.looping:
                 self._set_next_track()
@@ -153,7 +154,7 @@ class Integrator():
         self._state.stop(reason)
 
     def _check_running(self) -> Tuple[RUNNING_STATE, NEXT_MEDIA_STATE]:
-        player_state = self._player.get_state()
+        player_state = self._player.get_dlna_player().get_state()
 
         transport_state = player_state.transport_state
         currently_played_url = player_state.current_url
@@ -228,7 +229,7 @@ class Integrator():
         logger.debug('pause called')
         self._end("pause invoked")
         try:
-            self._player.pause()
+            self._player.get_dlna_player().pause()
         except Exception as e:
             # reset inner state
             self._end("exception in pause: " + str(e))
@@ -239,7 +240,7 @@ class Integrator():
         logger.debug('stop called')
         self._end("stop invoked")
         try:
-            self._player.stop()
+            self._player.get_dlna_player().stop()
         except Exception as e:
             # reset inner state
             self._end("exception in stop: " + str(e))

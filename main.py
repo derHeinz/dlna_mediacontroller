@@ -5,6 +5,7 @@ from controller.webserver import WebServer
 from controller.appinfo import AppInfo
 from controller.scheduler import Scheduler
 from controller.player_dispatcher import PlayerDispatcher
+from controller.player_manager import PlayerManager
 
 from dlna.player import Player
 from dlna.renderer import Renderer
@@ -31,32 +32,6 @@ def load_config():
         return json.load(data_file)
 
 
-def create_players(renderers_config: dict) -> list[Player]:
-    res = []
-    for r_config in renderers_config:
-        renderer = Renderer(name=r_config.get('name'), aliases=r_config.get('aliases'), url=r_config.get('url'),
-                            mac=r_config.get('mac'), capabilities=r_config.get('capabilities'),
-                            send_metadata=r_config.get('send_metadata'))
-        res.append(Player(renderer))
-    return res
-
-
-def validate_players(players: list[Player]):
-    if players is None or len(players) < 1:
-        raise ValueError("Players invalid.")
-
-    if len(players) < 2:
-        return
-
-    visited_names = []
-    for p in players:
-        p_names = p.get_renderer().get_known_names()
-        for p_name in p_names:
-            if p_name in visited_names:
-                raise ValueError(f"configuration contains two players with name {p_name}")
-        visited_names.extend(p_names)
-
-
 def create_media_servers(media_servers_config: dict) -> list[MediaServer]:
     res = []
     for m_config in media_servers_config:
@@ -77,12 +52,12 @@ def main():
     scheduler = Scheduler()
     scheduler.start()
 
-    players = create_players(config.get('renderers'))
-    validate_players(players)
+    player_configs = config.get('players')
 
+    manager = PlayerManager(player_configs, scheduler)
     media_servers = create_media_servers(config.get('media_servers'))
 
-    dispatcher = PlayerDispatcher(players, media_servers[0], scheduler)  # todo for now only one
+    dispatcher = PlayerDispatcher(manager, media_servers[0], scheduler)  # todo for now only one
     w = WebServer(config, dispatcher, info)
     w.run()
 

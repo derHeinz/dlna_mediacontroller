@@ -122,7 +122,10 @@ class PlayerDispatcher:
 
     def state(self, command: Command = None):
         res = []
-        # todo we probably need a way to get the state of a particular player?!?
+        # todo do we need a way to get the state of a particular player?!?
+        if command is not None:
+            i = self._decide_integrator(command)
+            return StatePerPlayer(i._player.get_name(), i.get_state())
 
         # integrated state over all players
         for m in self._players_to_integrators:
