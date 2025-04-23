@@ -96,7 +96,7 @@ class State():
     def is_url_mode(self):
         """url mode plays the same url, differece to item_mode"""
         if self.current_command is None:
-            return None
+            return False
 
         if self.current_command.url:
             return True
@@ -105,7 +105,7 @@ class State():
     def is_item_mode(self):
         """item mode the mode that search via mediaserver"""
         if self.current_command is None:
-            return None
+            return False
 
         if self.current_command.url:
             return False

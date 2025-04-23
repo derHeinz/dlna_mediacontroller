@@ -92,8 +92,34 @@ class TestPlayerDispatcher(unittest.TestCase):
         i.stop.assert_called_with()
         ensure_online.assert_called_with(self.FAKE_PLAYER_B)
 
-    def test_state(self):
-        self._testee().state(None)
+    @patch("controller.player_dispatcher.Integrator")
+    @patch("controller.player_dispatcher.ensure_online")
+    def test_state(self, ensure_online, integrator_constructor):
+        ensure_online.return_value = True
+        integrator_constructor.side_effect = [MagicMock(), MagicMock()]  # return 2 differnt integrators (one per player)
+
+        stateful_dispatcher = self._testee()
+        res_none = stateful_dispatcher.state(None)
+        self.assertEqual([], res_none)
+
+        # play one item
+        cmd_a = PlayCommand(target='A', url=self.DEFAULT_URL)
+        stateful_dispatcher.play(cmd_a)
+        res_a_none = stateful_dispatcher.state(None)
+        res_a_cmd = stateful_dispatcher.state(cmd_a)
+        self.assertEqual(res_a_none, res_a_cmd)
+
+        # play to another player
+        cmd_b = PlayCommand(target='B', url=self.DEFAULT_URL)
+        stateful_dispatcher.play(cmd_b)
+        res_b_none = stateful_dispatcher.state(None)
+        res_b_cmd = stateful_dispatcher.state(cmd_b)
+        self.assertNotEqual(res_b_none, res_b_cmd)  # because of player 'A' now in res_b_none
+        self.assertEqual(res_b_none[0], res_a_cmd[0])
+        self.assertEqual(res_b_none[1], res_b_cmd[0])
+
+        self.assertNotEqual(res_a_cmd, res_b_cmd)  # because different players
+        self.assertNotEqual(res_a_none, res_b_none)  # because different times
 
     @patch("controller.player_dispatcher.Integrator")
     @patch("controller.player_dispatcher.ensure_online")
@@ -102,11 +128,39 @@ class TestPlayerDispatcher(unittest.TestCase):
         i = integrator_constructor.return_value
 
         c = PlayCommand(target='B', url=self.DEFAULT_URL)
-        self._testee().play(c)
+        t = self._testee()
+        t.play(c)
 
         integrator_constructor.assert_called_with(self.FAKE_PLAYER_B, self.FAKE_SERVER, self.FAKE_SCHEDULER)
         i.play.assert_called_with(c)
         ensure_online.assert_called_with(self.FAKE_PLAYER_B)
+
+        # check state method aswell
+        state_res = t.state(c)
+        i.get_state.assert_called()
+        self.FAKE_PLAYER_B.get_name.assert_called()
+        self.assertTrue(state_res[0].player_name, 'B')
+
+    @patch("controller.player_dispatcher.Integrator")
+    @patch("controller.player_dispatcher.ensure_online")
+    def test_play_target_again(self, ensure_online, integrator_constructor):
+        ensure_online.return_value = True
+        i = integrator_constructor.return_value
+
+        stateful_dispatcher = self._testee()
+        c = PlayCommand(target='B', url=self.DEFAULT_URL)
+        stateful_dispatcher.play(c)
+        stateful_dispatcher.play(c)
+
+        integrator_constructor.assert_called_with(self.FAKE_PLAYER_B, self.FAKE_SERVER, self.FAKE_SCHEDULER)
+        i.play.assert_called_with(c)
+        ensure_online.assert_called_with(self.FAKE_PLAYER_B)
+
+        # check state method aswell
+        state_res = stateful_dispatcher.state(None)
+        i.get_state.assert_called()
+        self.FAKE_PLAYER_B.get_name.assert_called()
+        self.assertTrue(state_res[0].player_name, 'B')
 
     @patch("controller.player_dispatcher.Integrator")
     @patch("controller.player_dispatcher.ensure_online")

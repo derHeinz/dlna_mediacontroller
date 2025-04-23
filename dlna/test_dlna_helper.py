@@ -1,8 +1,22 @@
 import unittest
 from dlna import dlna_helper
+from unittest.mock import patch
 
 
 class TestDLNAHelper(unittest.TestCase):
+
+    @patch("dlna.dlna_helper.urlopen")
+    @patch("dlna.dlna_helper.Request")
+    def test_send_request(self, request_constructor, urlopen):
+        dlna_helper.send_request('foo', 'bar', 'faz')
+
+        request_constructor.assert_called_with('foo', 'faz'.encode('utf-8'), 'bar')
+        urlopen.assert_called()
+
+    def test_create_header(self):
+        res = dlna_helper.create_header('foo', 'bar')
+        self.assertTrue('foo' in res['Soapaction'])
+        self.assertTrue('bar' in res['Soapaction'])
 
     def test_namespace_free_res_element(self):
 

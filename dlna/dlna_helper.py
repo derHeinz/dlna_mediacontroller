@@ -12,7 +12,7 @@ def create_header(type, method):
             "Soapaction": soapaction,
             "Connection": "close",
             "Accept": "text/html, image/gif, image/jpeg, *; q=.2, */*; q=.2",
-            "USER-AGENT": "Python/3.7 dlna.py/0.1 UPnP/1.0"
+            "USER-AGENT": "dlna_mediacontroller/0.1 UPnP/1.0"
             }
 
 

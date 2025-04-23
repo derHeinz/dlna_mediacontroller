@@ -14,3 +14,11 @@ class TestAppInfo(unittest.TestCase):
         default_result = self._create_testee().get()
         self.assertTrue(default_result.get('inittime'))
         self.assertEqual('foo'.upper(), 'FOO')
+
+    def test_register(self):
+        t = self._create_testee()
+        bla = {"foo": "bar"}
+        t.register("bla", bla)
+        res = t.get()
+
+        self.assertEqual(bla, res.get('bla'))

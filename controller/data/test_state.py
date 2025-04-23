@@ -48,6 +48,9 @@ class TestState(unittest.TestCase):
         self.assertEqual(t.description, 'Aus')
         self.assertEqual(t.stop_reason, None)
 
+        self.assertFalse(t.is_item_mode())
+        self.assertFalse(t.is_url_mode())
+
     def test_now_playing_url(self):
         t = self._testee()
 
@@ -63,6 +66,9 @@ class TestState(unittest.TestCase):
         self.assertEqual(t.played_count, 1)
         self.assertEqual(t.description, 'Spielt ' + DEFAULT_URL)
         self.assertEqual(t.stop_reason, None)
+
+        self.assertFalse(t.is_item_mode())
+        self.assertTrue(t.is_url_mode())
 
     def test_now_playing_item(self):
         t = self._testee()
@@ -80,6 +86,9 @@ class TestState(unittest.TestCase):
         self.assertEqual(t.played_count, 1)
         self.assertEqual(t.description, f"Spielt {DEFAULT_TITLE} von {DEFAULT_ARTIST}")
         self.assertEqual(t.stop_reason, None)
+
+        self.assertTrue(t.is_item_mode())
+        self.assertFalse(t.is_url_mode())
 
     def test_next_play(self):
         t = self._testee()

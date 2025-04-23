@@ -55,20 +55,14 @@ class PlayerDispatcher:
                     return p
         return None
 
-    def _player_for_type(self, type: str) -> PlayerWrapper | None:
-        if (type):
-            for p in self._player_manager.get_players():
-                if p.can_play_type(type):
-                    return p
-        return None
-
     def _get_or_create_integrator(self, player) -> Integrator:
         for m in self._players_to_integrators:
             if m.player == player:
                 return m.integrator
 
         i = Integrator(player, self._media_server, self._scheduler)
-        self._players_to_integrators.append(i)
+        mapping = Mapping(player, i)
+        self._players_to_integrators.append(mapping)
         return i
 
     def _player_available(self, player: PlayerWrapper) -> bool:
@@ -79,8 +73,7 @@ class PlayerDispatcher:
             return False
         return True
 
-    def _decide_integrator(self, command: Command) -> Integrator:
-        # FIRST if it's explicitely mentioned: player from command's target
+    def _decide_integrator_by_target(self, command: Command) -> Integrator | None:
         if hasattr(command, 'target'):
             player = self._player_from_target(command.target)
             if player:
@@ -91,9 +84,16 @@ class PlayerDispatcher:
                     msg = f"The requested player {command.target} is not available"
                     logger.error(msg)
                     raise RequestCannotBeHandeledException(msg)
+        return None
+
+    def _decide_integrator(self, command: Command) -> Integrator:
+        # FIRST if it's explicitely mentioned: player from command's target
+        by_target = self._decide_integrator_by_target(command)
+        if (by_target):
+            return by_target
 
         # SECOND, beginning from the first player,
-        # check through the list of players if one is available to play it on
+        # check through the list of players if one is available to play
         for p in self._player_manager.get_players():
             if hasattr(command, 'type') and command.type:
                 if not p.can_play_type(command.type):
@@ -121,13 +121,16 @@ class PlayerDispatcher:
         return i.stop()
 
     def state(self, command: Command = None):
-        res = []
-        # todo do we need a way to get the state of a particular player?!?
-        if command is not None:
-            i = self._decide_integrator(command)
-            return StatePerPlayer(i._player.get_name(), i.get_state())
 
-        # integrated state over all players
+        # single result
+        by_target = self._decide_integrator_by_target(command)
+        if (by_target):
+            for m in self._players_to_integrators:
+                if by_target == m.integrator:
+                    return [StatePerPlayer(m.player.get_name(), m.integrator.get_state())]
+
+        # state over all players used
+        res = []
         for m in self._players_to_integrators:
             s = StatePerPlayer(m.player.get_name(), m.integrator.get_state())
             res.append(s)

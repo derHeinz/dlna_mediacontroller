@@ -14,6 +14,3 @@ class PlayCommand(Command):
     target: str = None
     type: str = None
     loop: bool = False
-
-    def isUrlBased(self):
-        return self.url is not None
