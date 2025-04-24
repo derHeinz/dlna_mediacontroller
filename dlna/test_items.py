@@ -19,6 +19,8 @@ class TestItem(unittest.TestCase):
         <dc:creator>Queen</dc:creator>
         <dc:date>1995-01-01</dc:date>
         <ns2:artist>Queen</ns2:artist>
+        <ns2:actor>Queen2</ns2:actor>
+        <ns2:author>Queen3</ns2:author>
         <ns2:album>Made in Heaven</ns2:album>
         <ns2:genre>Rock</ns2:genre>
         <ns2:originalTrackNumber>6</ns2:originalTrackNumber>
@@ -46,10 +48,10 @@ class TestItem(unittest.TestCase):
         i = Item(ET.fromstring(self.EXAMPLE_ITEM))
 
         self.assertEqual("I Was Born to Love You", i.get_title())
-        self.assertEqual(None, i.get_actor())
+        self.assertEqual("Queen2", i.get_actor())
         self.assertEqual("Queen", i.get_creator())
         self.assertEqual("Queen", i.get_artist())
-        self.assertEqual(None, i.get_author())
+        self.assertEqual("Queen3", i.get_author())
         self.assertEqual("object.item.audioItem.musicTrack", i.get_class())
         self.assertEqual("http://127.0.0.1/MediaItems/20972.mp3", i.get_url())
 

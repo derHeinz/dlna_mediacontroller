@@ -156,6 +156,31 @@ class TestPlayer(unittest.TestCase):
     """
 
     @patch("upnpclient.Device")
+    def test_set_next(self, device):
+        p = Player(device, self.DEFAULT_WITH_METADATA)
+
+        track_uri = 'track-uri'
+        root_el = ET.fromstring(XML_HEADER + unescape(self.VALID_ITEMS))
+        first_item = root_el.find('r:item', {'r': 'urn:schemas-upnp-org:metadata-1-0/DIDL-Lite/'})
+        i = Item(first_item)
+        p.set_next(track_uri, item=i)
+
+        set_next_av = device.mock_calls[0]
+        self.assertEqual('AVTransport.SetNextAVTransportURI', set_next_av[0])
+        self.assertEqual(0, set_next_av[2]['InstanceID'])
+        self.assertEqual(track_uri, set_next_av[2]['NextURI'])
+
+        # check third argument
+        xml_content = set_next_av[2].get('NextURIMetaData')
+        # make sure it is a valid XML string
+        ET.fromstring(unescape(xml_content))
+        self.assertTrue(i.get_class() in xml_content)
+        self.assertTrue(i.get_title() in xml_content)
+        self.assertTrue(i.get_creator() in xml_content)
+        self.assertTrue(i.get_artist() in xml_content)
+        self.assertTrue(i.get_url() in xml_content)
+
+    @patch("upnpclient.Device")
     def test_play_with_audio_item(self, device: MagicMock):
         p = Player(device, self.DEFAULT_WITH_METADATA)
 

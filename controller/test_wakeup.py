@@ -34,6 +34,16 @@ class TestWakeup(unittest.TestCase):
 
     @patch("controller.wakeup.urlopen")
     @patch("controller.wakeup.send_magic_packet")
+    def test_online(self, wakeonlan, urlopen):
+
+        mock_renderer = self._testee_renderer()
+
+        self.assertTrue(ensure_online(mock_renderer))
+        wakeonlan.assert_not_called()
+        urlopen.assert_has_calls([self.DEFAULT_CHECK_CALL])
+
+    @patch("controller.wakeup.urlopen")
+    @patch("controller.wakeup.send_magic_packet")
     def test_online_without_mac(self, wakeonlan, urlopen):
         urlopen.side_effect = self.DEFAULT_ONLINE_ERROR
 
