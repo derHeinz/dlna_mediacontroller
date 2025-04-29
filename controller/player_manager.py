@@ -24,7 +24,7 @@ class PlayerManager():
     def __init__(self, configs: dict, scheduler: Scheduler):
         self._players = [configure(config) for config in configs]
         self._scheduler = scheduler
-        self._scheduler.start_job('PLAYER_DISCOVERY', self._run_discovery, self.DEFAULT_DISCOVERY_INTERVAL)
+        self._scheduler.start_job('PLAYER_DISCOVERY', self._run_discovery, self.DEFAULT_DISCOVERY_INTERVAL, immediate=True)
 
     def get_players(self) -> list[PlayerWrapper]:
         return self._players

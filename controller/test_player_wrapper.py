@@ -2,7 +2,7 @@ import unittest
 from unittest.mock import patch, MagicMock
 import json
 
-from controller.player_wrapper import configure, discover
+from controller.player_wrapper import configure, discover, _create_discovered
 
 
 class TestPlayerWrapper(unittest.TestCase):
@@ -38,6 +38,14 @@ class TestPlayerWrapper(unittest.TestCase):
         disc_player.ConnectionManager.GetProtocolInfo.return_value = protocol
 
         return disc_player
+    
+    def create_discovered_player(self):
+        device = MagicMock()
+        device.friendly_name = 'foo'
+        device.location = 'http://url.test'
+        device.udn = 'id-0815'
+
+        return _create_discovered(device)
 
     def test_simple_configured_device(self):
         p = configure(self.DEFAULT_CONFIG)
@@ -144,3 +152,29 @@ class TestPlayerWrapper(unittest.TestCase):
         self.assertTrue(p.can_play_type('audio'))
         self.assertTrue(p.can_play_type('video'))
         self.assertTrue(p.can_play_type('image'))
+
+    def test_configured_and_discovered(self):
+        p = configure(self.DEFAULT_CONFIG)
+        pd = self.create_discovered_player()
+
+        # this is how they are merged together
+        p._detected_meta = pd._detected_meta
+
+        self.assertEqual('test', p.get_name())
+        self.assertEqual('http://test.com', p.get_url())
+        self.assertEqual('id-0815', p.get_id())
+        self.assertEqual('4711', p.get_mac())
+        self.assertEqual(True, p.include_metadata())
+
+        self.assertTrue(p.is_configured())
+        self.assertTrue(p.is_detected())
+
+        self.assertTrue(p.can_play_type('audio'))
+        self.assertFalse(p.can_play_type('video'))
+        self.assertFalse(p.can_play_type('image'))
+
+        self.assertTrue('foo' in p.get_known_names())
+        self.assertTrue('bar' in p.get_known_names())
+
+        # check json dumpable
+        json.dumps(p.to_view())

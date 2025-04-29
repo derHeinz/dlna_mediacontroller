@@ -22,7 +22,7 @@ class TestPlayerManager(unittest.TestCase):
 
         m = self._testee()
         configure.assert_called()
-        self.SCHEDULER.start_job.assert_called_with('PLAYER_DISCOVERY', m._run_discovery, m.DEFAULT_DISCOVERY_INTERVAL)
+        self.SCHEDULER.start_job.assert_called_with('PLAYER_DISCOVERY', m._run_discovery, m.DEFAULT_DISCOVERY_INTERVAL, immediate=True)
 
         self.assertEqual(self.PLAYER_A, m.get_players()[0])
         self.assertEqual(self.PLAYER_B, m.get_players()[1])

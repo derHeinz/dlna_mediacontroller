@@ -48,3 +48,11 @@ class TestScheduler(unittest.TestCase):
         self.assertEqual(1, len(s.scheduler.get_jobs()))  # 1 job
         s.stop_job(self.DEFAULT_NAME)
         self.assertEqual(0, len(s.scheduler.get_jobs()))  # no jobs
+
+    def test_start_job_immediate(self):
+        s = self._testee()
+        s.start()
+
+        self.assertEqual(0, len(s.scheduler.get_jobs()))  # no jobs
+        s.start_job(self.DEFAULT_NAME, self._noop, self.DEFAULT_INTERVAL, immediate=True)
+        self.assertEqual(1, len(s.scheduler.get_jobs()))  # 1 job
