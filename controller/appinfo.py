@@ -21,5 +21,11 @@ class AppInfo(object):
         """register additional information"""
         self.info[key] = value
 
+    def _to_value(self, value):
+        if callable(value):
+            return value()
+        return value
+
     def get(self):
-        return json.loads(json.dumps(self.info))
+        res = {k: self._to_value(v) for k, v in self.info.items()}
+        return json.loads(json.dumps(res))

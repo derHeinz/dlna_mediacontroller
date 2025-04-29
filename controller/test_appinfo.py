@@ -22,3 +22,25 @@ class TestAppInfo(unittest.TestCase):
         res = t.get()
 
         self.assertEqual(bla, res.get('bla'))
+
+    def test_register_func(self):
+        t = self._create_testee()
+
+        def yield_number():
+            return 42
+        
+        t.register('foo', yield_number)
+
+        res = t.get()
+        self.assertEqual(42, res.get('foo'))
+
+    def bla(self):
+        return 42
+
+    def test_register_func_self(self):
+        t = self._create_testee()
+
+        t.register('foo', self.bla)
+
+        res = t.get()
+        self.assertEqual(42, res.get('foo'))

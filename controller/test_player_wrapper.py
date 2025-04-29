@@ -1,5 +1,6 @@
 import unittest
 from unittest.mock import patch, MagicMock
+import json
 
 from controller.player_wrapper import configure, discover
 
@@ -57,6 +58,9 @@ class TestPlayerWrapper(unittest.TestCase):
         self.assertTrue('foo' in p.get_known_names())
         self.assertTrue('bar' in p.get_known_names())
 
+        # check json dumpable
+        json.dumps(p.to_view())
+
     @patch('upnpclient.discover')
     def test_simple_discovered(self, upnp_discover):
         discoverable_player = self._create_discoverable_player()
@@ -80,6 +84,9 @@ class TestPlayerWrapper(unittest.TestCase):
         self.assertTrue(p.can_play_type('image'))
 
         self.assertTrue(self.DEFAULT_FRIENDLY_NAME in p.get_known_names())
+
+        # check json dumpable
+        json.dumps(p.to_view())
 
     @patch('upnpclient.discover')
     def test_non_discoverable(self, upnp_discover):

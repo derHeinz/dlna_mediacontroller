@@ -1,6 +1,6 @@
 from datetime import datetime
 import logging
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, asdict
 
 import upnpclient
 
@@ -99,6 +99,13 @@ class PlayerWrapper():
             device = upnpclient.Device(self.get_url())
             self._dlna_player = Player(device, self.include_metadata())
         return self._dlna_player
+    
+    def to_view(self):
+        return {
+            'configured_meta': asdict(self._configured_meta) if self._configured_meta is not None else None,
+            'detected_meta': asdict(self._detected_meta) if self._detected_meta is not None else None,
+            'last_seen': self._last_seen.isoformat() if self._last_seen is not None else None
+        }
 
 
 def _discover_players() -> list[upnpclient.Device]:

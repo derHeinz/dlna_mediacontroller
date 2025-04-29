@@ -27,6 +27,14 @@ class TestPlayerManager(unittest.TestCase):
         self.assertEqual(self.PLAYER_A, m.get_players()[0])
         self.assertEqual(self.PLAYER_B, m.get_players()[1])
 
+    @patch("controller.player_manager.configure")
+    def test_getters(self, configure):
+        m = self._testee()
+        configure.assert_called()
+
+        p = m.get_players()
+        v = m.get_player_views()
+
     @patch("controller.player_manager.discover")
     @patch("controller.player_manager.configure")
     def test_discover_new_device(self, configure, discover):

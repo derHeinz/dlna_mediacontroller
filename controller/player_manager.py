@@ -28,6 +28,9 @@ class PlayerManager():
 
     def get_players(self) -> list[PlayerWrapper]:
         return self._players
+    
+    def get_player_views(self) -> list:
+        return [p.to_view() for p in self._players]
 
     def _run_discovery(self):
         discovered_players = discover()

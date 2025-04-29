@@ -50,9 +50,8 @@ def main():
     scheduler = Scheduler()
     scheduler.start()
 
-    player_configs = config.get('players')
-
-    manager = PlayerManager(player_configs, scheduler)
+    manager = PlayerManager(config.get('players'), scheduler)
+    info.register('players', manager.get_player_views)
     media_servers = create_media_servers(config.get('media_servers'))
 
     dispatcher = PlayerDispatcher(manager, media_servers[0], scheduler)  # todo for now only one
