@@ -19,7 +19,7 @@ class PlayerMetadata():
     url: str = None
     mac: str = None
     capabilities: list[str] = field(default_factory=list)
-    send_metadata: bool = False
+    send_metadata: bool = True
 
 
 class PlayerWrapper():
@@ -96,8 +96,9 @@ class PlayerWrapper():
     def get_dlna_player(self) -> Player:
         if self._dlna_player is None:
             # ensure device
-            device = upnpclient.Device(self.get_url())
-            self._dlna_player = Player(device, self.include_metadata())
+            if self._upnp_device is None:
+                self._upnp_device = upnpclient.Device(self.get_url())
+            self._dlna_player = Player(self._upnp_device, self.include_metadata())
         return self._dlna_player
     
     def to_view(self):
@@ -144,7 +145,7 @@ def _create_configured(config: dict) -> 'PlayerWrapper':
     pw._configured_meta = configured_meta
     pw._detected_meta = None
     pw._upnp_device = None
-    pw._dlna_player = None  # TODO check how PlayerWrapper and Player interact...
+    pw._dlna_player = None
     return pw
 
 
@@ -156,7 +157,7 @@ def _create_discovered(device: upnpclient.Device) -> 'PlayerWrapper':
     pw._configured_meta = None
     pw._detected_meta = discovered_meta
     pw._upnp_device = device
-    pw._dlna_player = None  # TODO check how PlayerWrapper and Player interact...
+    pw._dlna_player = None
     return pw
 
 

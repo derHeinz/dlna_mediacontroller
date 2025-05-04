@@ -82,7 +82,7 @@ class TestPlayerWrapper(unittest.TestCase):
         self.assertEqual(self.DEFAULT_LOCATION, p.get_url())
         self.assertEqual(self.DEFAULT_UDN, p.get_id())
         self.assertIsNone(p.get_mac())
-        self.assertEqual(False, p.include_metadata())
+        self.assertEqual(True, p.include_metadata())
 
         self.assertFalse(p.is_configured())
         self.assertTrue(p.is_detected())
