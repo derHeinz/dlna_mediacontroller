@@ -153,6 +153,17 @@ class TestPlayerWrapper(unittest.TestCase):
         self.assertTrue(p.can_play_type('video'))
         self.assertTrue(p.can_play_type('image'))
 
+    @patch('upnpclient.Device')
+    def test_configured(self, device_constructor: MagicMock):
+        
+        p = configure(self.DEFAULT_CONFIG)
+        player = p.get_dlna_player()
+        device_constructor.assert_called_with(self.DEFAULT_CONFIG['url'])
+
+        device_constructor.reset_mock()
+        player = p.get_dlna_player()
+        device_constructor.assert_not_called()
+
     def test_configured_and_discovered(self):
         p = configure(self.DEFAULT_CONFIG)
         pd = self.create_discovered_player()

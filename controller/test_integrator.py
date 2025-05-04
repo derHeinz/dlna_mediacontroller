@@ -557,11 +557,11 @@ class TestIntegratorPlayFunctions(TestIntegratorBase):
 
     @patch("controller.test_integrator.FakeServer.search")
     def test_play_loop_scenario_2(self, mediaserver_search_mock):
-        """Scenario where some weired stuff happens:
+        """Scenario with specific TRANSITIONING behaviors:
         1) command: play songs from one artist in a loop
-        2) loop1: renderer in TRANSITIONING, check nothing done
-        3) loop2: renderer in STOPPED, check next is played immediately
-        4) loop3: renderer plays random track, check playback cancelled
+        2) loop1: renderer in TRANSITIONING (still to current), check nothing done
+        3) loop2: renderer in TRANSITIONING (current to next), check nothing done
+        4) loop2: renderer in STOPPED, check next is played immediately
         """
         i = self._testee()
 
@@ -577,11 +577,21 @@ class TestIntegratorPlayFunctions(TestIntegratorBase):
 
         # loop1
         self.PLAYER_DLNA.reset_mock()
-        self.PLAYER_DLNA.get_state.return_value = PlayerState(TRANSPORT_STATE.TRANSITIONING, None, None, 0)
+        self.PLAYER_DLNA.get_state.return_value = PlayerState(TRANSPORT_STATE.TRANSITIONING, item_1.url, item_2.url, 0)
         i._loop_process()
         self.PLAYER_DLNA.set_next.assert_not_called()
         self.PLAYER_DLNA.play.assert_not_called()
+        self._assert_state(i._state, current_command=cmd, last_played_url=item_1.url, played_count=1,
+                           last_played_artist=item_1.actor, last_played_title=item_1.title,
+                           running=True, looping=True, description="Spielt Medien mit 'must go'",
+                           next_play_url=item_2.url, next_play_item=item_2)
+        
+        # loop2
         self.PLAYER_DLNA.reset_mock()
+        self.PLAYER_DLNA.get_state.return_value = PlayerState(TRANSPORT_STATE.TRANSITIONING, item_2.url, None, 0)
+        i._loop_process()
+        self.PLAYER_DLNA.set_next.assert_not_called()
+        self.PLAYER_DLNA.play.assert_not_called()
         self._assert_state(i._state, current_command=cmd, last_played_url=item_1.url, played_count=1,
                            last_played_artist=item_1.actor, last_played_title=item_1.title,
                            running=True, looping=True, description="Spielt Medien mit 'must go'",
@@ -589,33 +599,62 @@ class TestIntegratorPlayFunctions(TestIntegratorBase):
 
         # loop2
         self.PLAYER_DLNA.reset_mock()
-        self.PLAYER_DLNA.get_state.return_value = PlayerState(TRANSPORT_STATE.STOPPED, item_1.url, None, 0)
+        self.PLAYER_DLNA.get_state.return_value = PlayerState(TRANSPORT_STATE.STOPPED, item_2.url, None, 0)
         i._loop_process()
         self.PLAYER_DLNA.play.assert_called_with(item_3.url, item=item_3)
         self.PLAYER_DLNA.set_next.assert_called_with(item_1.url, item=item_1)
-        self.PLAYER_DLNA.reset_mock()
         self._assert_state(i._state, current_command=cmd, last_played_url=item_3.url, played_count=2,
                            last_played_artist=item_3.actor, last_played_title=item_3.title,
                            running=True, looping=True, description="Spielt Medien mit 'must go'",
                            next_play_url=item_1.url, next_play_item=item_1)
+        
 
-        # loop3
+    @patch("controller.test_integrator.FakeServer.search")
+    def test_play_loop_scenario_3(self, mediaserver_search_mock):
+        """Scenario where some other track is played:
+        1) command: play songs from one artist in a loop
+        2) loop1: renderer in PLAYING, check nothing done
+        3) loop2: renderer plays random track, check playback cancelled
+        """
+        i = self._testee()
+
+        # prepare mock
+        item_1 = self.DEFAULT_ITEM
+        item_2 = MyItem('must go forward', 'foo', 'bar')
+        mediaserver_search_mock.return_value = MySearchResponse([item_1, item_2])
+
+        cmd = PlayCommand(title='must go', loop=True)
+        self._initial_play_item(i, cmd, next_item=item_2)
+        self.SCHEDULER.reset_mock()
+
+        # loop1
+        self.PLAYER_DLNA.reset_mock()
+        self.PLAYER_DLNA.get_state.return_value = PlayerState(TRANSPORT_STATE.PLAYING, item_1.url, item_2.url, 0)
+        i._loop_process()
+        self.PLAYER_DLNA.set_next.assert_not_called()
+        self.PLAYER_DLNA.reset_mock()
+        self._assert_state(i._state, current_command=cmd, last_played_url=item_1.url, played_count=1,
+                           last_played_artist=item_1.actor, last_played_title=item_1.title,
+                           next_play_url=item_2.url, next_play_item=item_2,
+                           running=True, looping=True, description="Spielt Medien mit 'must go'")
+
+        # loop2
         self.PLAYER_DLNA.reset_mock()
         self.PLAYER_DLNA.get_state.return_value = PlayerState(TRANSPORT_STATE.PLAYING, "random-other", None, 0)
         i._loop_process()
         self.PLAYER_DLNA.set_next.assert_not_called()
         self.PLAYER_DLNA.play.assert_not_called()
         self.PLAYER_DLNA.reset_mock()
-        self._assert_state(i._state, current_command=None, last_played_url=item_3.url, played_count=0,
-                           last_played_artist=item_3.actor, last_played_title=item_3.title,
+        self._assert_state(i._state, current_command=None, last_played_url=item_1.url, played_count=0,
+                           last_played_artist=item_1.actor, last_played_title=item_1.title,
                            running=False, looping=False, description="Aus", stop_reason='interrupted')
 
     @patch("controller.test_integrator.FakeServer.search")
-    def test_play_loop_scenario_3(self, mediaserver_search_mock):
+    def test_play_loop_scenario_4(self, mediaserver_search_mock):
         """Scenario where some weired stuff happens:
         1) command: play songs from one artist in a loop (include set_next)
         2) loop1: renderer in PLAYING, check nothing done
-        3) loop2: renderer in STOPPED with max rel_count which indicates UNKNOWN , check nothing done
+        3) loop2: renderer in STOPPED with max rel_count which indicates UNKNOWN, check nothing done
         4) loop3: renderer plays next track, current becomes next, and new next is set
         """
         i = self._testee()

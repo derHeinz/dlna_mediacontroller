@@ -173,7 +173,7 @@ class Integrator():
         is_last_played_url = self._state.last_played_url == currently_played_url
         is_next_play_url = self._state.next_play_url == currently_played_url
         if (not is_last_played_url) and (not is_next_play_url):
-            logger.debug('Found renderer plays unknown track')
+            logger.debug('Found renderer on unknown track')
             return [RUNNING_STATE.INTERRUPTED, None]
 
         if transport_state is TRANSPORT_STATE.STOPPED:
@@ -189,8 +189,6 @@ class Integrator():
                 return [RUNNING_STATE.INTERRUPTED, None]
 
         if transport_state is TRANSPORT_STATE.PLAYING:
-           
-
             if is_last_played_url:
                 logger.debug('Found renderer running current track')
                 return [RUNNING_STATE.RUNNING_CURRENT, NEXT_MEDIA_STATE.SET if next_url else NEXT_MEDIA_STATE.UNSET]
@@ -199,7 +197,7 @@ class Integrator():
                 # next_media may be set, but not by this process, so tell him it's unset.
                 return [RUNNING_STATE.RUNNING_NEXT, NEXT_MEDIA_STATE.UNSET]
             else:
-                # don't know what happened / unknown url playing
+                # don't know what happened - this case should have been found earlier.
                 logger.debug('Found renderer running unknown track')
                 return [RUNNING_STATE.INTERRUPTED, None]
 
