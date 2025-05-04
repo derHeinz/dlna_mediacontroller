@@ -40,7 +40,7 @@ class TestWebServer(unittest.TestCase):
         self.assertEqual(404, response.status_code)
         self.assertTrue(b"error" in response.data)
 
-    def _test_index(self):
+    def test_index(self):
         client = self.client()
 
         response = client.get("/")
