@@ -3,6 +3,7 @@ from unittest.mock import MagicMock
 from controller.webserver import WebServer
 from controller.appinfo import AppInfo
 from controller.data.exceptions import RequestCannotBeHandeledException, RequestInvalidException
+from unittest.mock import patch, MagicMock
 
 
 class TestWebServer(unittest.TestCase):
@@ -18,7 +19,7 @@ class TestWebServer(unittest.TestCase):
     DEFAULT_TARGET_JSON = {'target': 'a'}
     DEFAULT_JSON = {'target': 'a', 'url': 'url'}
 
-    def _testee(self):
+    def _testee(self) -> WebServer:
         config = {'webserver_port': 17}
         return WebServer(config, self.DEFAULT_DISPATCHER, self.APPINFO)
 
@@ -160,3 +161,13 @@ class TestWebServer(unittest.TestCase):
         self.assertTrue('Access-Control-Allow-Origin' in response.headers)
         self.assertEqual('*', response.headers.get('Access-Control-Allow-Origin'))
         self.DEFAULT_DISPATCHER.pause.assert_called()
+
+    def test_exit(self):
+        webserver = self._testee()
+        
+        with patch.object(webserver, '_exit_program', wraps=webserver._exit_program) as wrapped_exit:
+            wrapped_exit.return_value = None  # make it not a spy, thus method not called
+            client = self.client(webserver)
+            response = client.post("/exit")
+            self.assertEqual(200, response.status_code)
+            wrapped_exit.assert_called()
