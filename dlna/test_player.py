@@ -93,8 +93,8 @@ class TestPlayer(unittest.TestCase):
     def test_get_state(self, device):
         p = Player(device, self.DEFAULT_WITH_METADATA)
 
-        device.AVTransport.GetPositionInfo.return_value = {'RelCount': '0'}
         device.AVTransport.GetTransportInfo.return_value = {'CurrentTransportState': 'NO_MEDIA_PRESENT'}
+        device.AVTransport.GetPositionInfo.return_value = {'RelCount': '0'}
         device.AVTransport.GetMediaInfo.return_value = {'CurrentURI': 'a-track', 'NextURI': 'b-track'}
 
         res = p.get_state()
@@ -104,8 +104,8 @@ class TestPlayer(unittest.TestCase):
         self.assertEqual('b-track', res.next_url)
 
         device.assert_has_calls([
-            call.AVTransport.GetPositionInfo(InstanceID=0),
             call.AVTransport.GetTransportInfo(InstanceID=0),
+            call.AVTransport.GetPositionInfo(InstanceID=0),
             call.AVTransport.GetMediaInfo(InstanceID=0)
         ])
 

@@ -85,8 +85,8 @@ class Player():
 
     def get_state(self) -> State:
 
-        position_info = self._device.AVTransport.GetPositionInfo(InstanceID=0)
         transport_info = self._device.AVTransport.GetTransportInfo(InstanceID=0)
+        position_info = self._device.AVTransport.GetPositionInfo(InstanceID=0)
         media_info = self._device.AVTransport.GetMediaInfo(InstanceID=0)
 
         transport_state = transport_info.get('CurrentTransportState', None)
@@ -95,7 +95,7 @@ class Player():
         current_URI = media_info.get('CurrentURI')
         next_URI = media_info.get('NextURI')
 
-        logger.debug(f"current transport_state: {transport_state} and track: {current_URI}")
+        logger.debug(f"current transport_state: {transport_state}, current track: {current_URI}, current rel-count: {rel_count}")
 
         return State(TRANSPORT_STATE[transport_state], current_URI, next_URI, rel_count)
 

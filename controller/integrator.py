@@ -19,6 +19,8 @@ RUNNING_STATE = Enum('RunningState', ['RUNNING_CURRENT', 'RUNNING_NEXT',
 
 NEXT_MEDIA_STATE = Enum('NextMediaState', ['SET', 'UNSET'])
 
+PROGRESS_COUNT_MAX = 2147483647  # see spec # 2.2.26 maximum of i4 datatype
+
 
 class Integrator():
 
@@ -56,9 +58,9 @@ class Integrator():
         self._state.next_track_is_playing()
 
     def _set_next_track(self):
+        logger.debug('set next track')
         if self._state.is_url_mode():
             # this mode always plays the same url
-            logger.debug('next playing without item')
             self._player.get_dlna_player().set_next(self._state.current_command.url)
             self._state.next_play(self._state.current_command.url, None)
             return
@@ -72,7 +74,6 @@ class Integrator():
             item = self._state.search_response.random_item()
             url = item.get_url()
 
-            logger.debug(f"next with item {item}")
             self._player.get_dlna_player().set_next(url, item=item)
             self._state.next_play(url, item)
         else:
@@ -118,16 +119,12 @@ class Integrator():
                 return
 
             if RUNNING_STATE.RUNNING_CURRENT == run_state:
-                logger.debug("running current url")
                 if self._state.looping and next_state == NEXT_MEDIA_STATE.UNSET:
-                    logger.debug("next media to play is unset, setting next media")
                     self._set_next_track()
                 return
 
             if RUNNING_STATE.RUNNING_NEXT == run_state:
-                logger.debug("running the next media")
                 if self._state.looping:
-                    logger.debug("next is current, find a next media and set")
                     self._next_track_is_current_track()
                     self._set_next_track()
                 else:
@@ -140,7 +137,7 @@ class Integrator():
                     self._end("not looping")
 
             if RUNNING_STATE.UNKNOWN == run_state:
-                logger.info("unable to determine running state")
+                logger.info("unable to determine running state - skipping")
 
         except Exception as e:
             logger.info('error in loop_process', exc_info=e)
@@ -183,20 +180,27 @@ class Integrator():
             if player_state.progress_count == 0:
                 logger.debug('Found renderer stopped naturally (played until end)')
                 return [RUNNING_STATE.STOPPED, None]
+            elif player_state.progress_count == PROGRESS_COUNT_MAX:
+                # this is observed as beeing a transitioning behavior
+                logger.debug('Found renderer in an unknown state')
+                return [RUNNING_STATE.UNKNOWN, NEXT_MEDIA_STATE.SET if next_url else NEXT_MEDIA_STATE.UNSET]
             else:
-                logger.debug('Found renderer stopped unnaturally (in the middle of a track)')
+                logger.warning('Found renderer stopped unnaturally (in the middle of a track)')
                 return [RUNNING_STATE.INTERRUPTED, None]
 
         if transport_state is TRANSPORT_STATE.PLAYING:
-            logger.debug('Found renderer still running a track')
+           
 
             if is_last_played_url:
+                logger.debug('Found renderer running current track')
                 return [RUNNING_STATE.RUNNING_CURRENT, NEXT_MEDIA_STATE.SET if next_url else NEXT_MEDIA_STATE.UNSET]
             if is_next_play_url:
+                logger.debug('Found renderer running next track')
                 # next_media may be set, but not by this process, so tell him it's unset.
                 return [RUNNING_STATE.RUNNING_NEXT, NEXT_MEDIA_STATE.UNSET]
             else:
                 # don't know what happened / unknown url playing
+                logger.debug('Found renderer running unknown track')
                 return [RUNNING_STATE.INTERRUPTED, None]
 
     def _validate_state(self, s: State):
