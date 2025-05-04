@@ -23,7 +23,7 @@ class TestWebServer(unittest.TestCase):
         config = {'webserver_port': 8080}
         return WebServer(config, self.DEFAULT_DISPATCHER, self.APPINFO)
 
-    def test_testee(self):
+    def _test_testee(self):
         self._testee()
 
     def client(self, webserver = None):
@@ -33,7 +33,7 @@ class TestWebServer(unittest.TestCase):
         t.app.testing = True
         return t.app.test_client()
 
-    def _test_not_found(self):
+    def test_not_found(self):
         client = self.client()
 
         response = client.get("/foo-bar-not-found")
