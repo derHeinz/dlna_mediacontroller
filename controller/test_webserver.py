@@ -20,7 +20,7 @@ class TestWebServer(unittest.TestCase):
     DEFAULT_JSON = {'target': 'a', 'url': 'url'}
 
     def _testee(self) -> WebServer:
-        config = {'webserver_port': 9897}
+        config = {'webserver_port': 8080}
         return WebServer(config, self.DEFAULT_DISPATCHER, self.APPINFO)
 
     def test_testee(self):
