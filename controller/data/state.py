@@ -71,7 +71,17 @@ class State():
         if self.current_command.loop:
             if self.current_command.url:
                 return "Wiederholt " + self.current_command.url
-            msg = "Spielt Lieder"
+            
+            msg = "Spielt "
+            if self.current_command.type == "audio":
+                msg += "Lieder"
+            elif self.current_command.type == "video":
+                msg += "Videos"
+            elif self.current_command.type == "image":
+                msg += "Bilder"
+            else:
+                msg += "Medien"
+
             # take the information from request
             if self.current_command.artist:
                 msg += " von " + self.current_command.artist

@@ -107,7 +107,7 @@ class TestState(unittest.TestCase):
         self.assertNotEqual(t.running_start_datetime, None)
         self.assertEqual(t.search_response, None)
         self.assertEqual(t.played_count, 2)
-        self.assertEqual(t.description, f"Spielt Lieder von {DEFAULT_ARTIST}")
+        self.assertEqual(t.description, f"Spielt Medien von {DEFAULT_ARTIST}")
         self.assertEqual(t.stop_reason, None)
 
     def test_stop(self):
@@ -126,3 +126,40 @@ class TestState(unittest.TestCase):
         self.assertEqual(t.played_count, 0)
         self.assertEqual(t.description, "Aus")
         self.assertEqual(t.stop_reason, 'paused')
+
+    def test_description(self):
+
+        t = self._testee()
+
+        t.command(PlayCommand(url=DEFAULT_URL))
+        self.assertEqual('Spielt a-track', t._calculate_description())
+
+        t.command(PlayCommand(url=DEFAULT_URL, loop=True))
+        self.assertEqual('Wiederholt a-track', t._calculate_description())
+
+        t.command(PlayCommand(artist='Foo', loop=True))
+        self.assertEqual('Spielt Medien von Foo', t._calculate_description())
+
+        t.command(PlayCommand(artist='Foo', loop=True, type='video'))
+        self.assertEqual('Spielt Videos von Foo', t._calculate_description())
+
+        t.command(PlayCommand(artist='Foo', loop=True, type='audio'))
+        self.assertEqual('Spielt Lieder von Foo', t._calculate_description())
+
+        t.command(PlayCommand(artist='Foo', loop=True, type='image'))
+        self.assertEqual('Spielt Bilder von Foo', t._calculate_description())
+
+        t.command(PlayCommand(artist='Foo', title='Bar', loop=True))
+        self.assertEqual('Spielt Medien von Foo mit \'Bar\'', t._calculate_description())
+
+        t.command(PlayCommand(artist='Foo', loop=False))
+        t.now_playing(None, MyItem('Bar', 'Foo'))
+        self.assertEqual('Spielt Bar von Foo', t._calculate_description())
+
+        t.now_playing(None, MyItem(None, 'Foo'))
+        self.assertEqual('Spielt etwas von Foo', t._calculate_description())
+
+        t.now_playing(None, MyItem('Bar', None))
+        self.assertEqual('Spielt Bar', t._calculate_description())
+
+
