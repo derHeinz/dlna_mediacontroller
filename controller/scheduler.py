@@ -1,6 +1,5 @@
 import logging
 import datetime
-import pytz
 
 from apscheduler.triggers.interval import IntervalTrigger
 from apscheduler.schedulers.blocking import BlockingScheduler, BaseScheduler
