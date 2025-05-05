@@ -56,7 +56,7 @@ def main():
 
     dispatcher = PlayerDispatcher(manager, media_servers[0], scheduler)  # todo for now only one
     w = WebServer(config, dispatcher, info)
-    w.run()
+    w.serve()
 
 
 if __name__ == "__main__":

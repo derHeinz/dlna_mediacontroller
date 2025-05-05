@@ -1,9 +1,10 @@
 import unittest
-from unittest.mock import MagicMock
+from unittest.mock import patch, MagicMock
+from threading import Thread
+
 from controller.webserver import WebServer
 from controller.appinfo import AppInfo
 from controller.data.exceptions import RequestCannotBeHandeledException, RequestInvalidException
-from unittest.mock import patch, MagicMock
 
 
 class TestWebServer(unittest.TestCase):
@@ -19,19 +20,23 @@ class TestWebServer(unittest.TestCase):
     DEFAULT_TARGET_JSON = {'target': 'a'}
     DEFAULT_JSON = {'target': 'a', 'url': 'url'}
 
-    def _testee(self) -> WebServer:
+    def _create_webserver(self, additional_config: dict = None) -> WebServer:
         config = {'webserver_port': 8080}
+        if additional_config is not None:
+            config = {**config, **additional_config}
         return WebServer(config, self.DEFAULT_DISPATCHER, self.APPINFO)
 
-    def _test_testee(self):
-        self._testee()
+    def tearDown(self):
+        if self._webserver is not None:
+            thread = Thread(target=self._webserver._server.shutdown, daemon=True)
+            thread.start()
 
     def client(self, webserver = None):
-        t = webserver
+        self._webserver = webserver
         if (not webserver):
-            t = self._testee()
-        t.app.testing = True
-        return t.app.test_client()
+            self._webserver = self._create_webserver()
+        self._webserver.app.testing = True
+        return self._webserver.app.test_client()
 
     def test_not_found(self):
         with self.client() as client:
@@ -150,7 +155,7 @@ class TestWebServer(unittest.TestCase):
 
     def _test_pause_cors(self):
         config = {'webserver_port': 17, 'webserver_cors_allow': True}
-        webserver = WebServer(config, self.DEFAULT_DISPATCHER, self.APPINFO)
+        webserver = self._create_webserver(config)
         client = self.client(webserver)
 
         self.DEFAULT_DISPATCHER.pause.return_value = {'foo': 'bar'}

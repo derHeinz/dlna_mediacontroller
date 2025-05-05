@@ -15,7 +15,7 @@ from controller.data.command import Command, PlayCommand
 logger = logging.getLogger(__file__)
 
 
-class WebServer(Thread):
+class WebServer():
 
     NAME = "DLNA Media Controller"
 
@@ -57,7 +57,7 @@ class WebServer(Thread):
             self._add_cors_to_response(response)
         return response
 
-    def run(self):
+    def serve(self):
         self._server.serve_forever()
 
     def not_found(self, error):
@@ -69,13 +69,12 @@ class WebServer(Thread):
     def _exit_program(self):
         time.sleep(3)
         logger.debug("shutting down")
-        os._exit(0)
+        self._server.shutdown()
 
     def exit(self):
         """exit program"""
         thread = Thread(target=self._exit_program)
         thread.start()
-
         return self._make_response_and_add_cors("shutdown hereafter", 200)
 
     def play(self):
