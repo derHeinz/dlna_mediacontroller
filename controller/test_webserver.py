@@ -26,11 +26,6 @@ class TestWebServer(unittest.TestCase):
             config = {**config, **additional_config}
         return WebServer(config, self.DEFAULT_DISPATCHER, self.APPINFO)
 
-    def tearDown(self):
-        if self._webserver is not None:
-            thread = Thread(target=self._webserver._server.shutdown, daemon=True)
-            thread.start()
-
     def client(self, webserver = None):
         self._webserver = webserver
         if (not webserver):

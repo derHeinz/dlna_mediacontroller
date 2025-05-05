@@ -32,9 +32,6 @@ class WebServer():
         self.dispatcher: PlayerDispatcher = dispatcher
         self.appinfo = appinfo
 
-        self._server = make_server(host='0.0.0.0', port=self.app.config['port'], app=self.app, threaded=True)
-        print("Starting %s on port %d" % (self.app.config['app_name'], self.app.config['port']))
-
         # register some endpoints
         self.app.add_url_rule(rule="/", view_func=self.index, methods=['GET'])
         self.app.add_url_rule(rule="/play", view_func=self.play, methods=['POST'])
@@ -58,6 +55,8 @@ class WebServer():
         return response
 
     def serve(self):
+        self._server = make_server(host='0.0.0.0', port=self.app.config['port'], app=self.app, threaded=True)
+        print("Starting %s on port %d" % (self.app.config['app_name'], self.app.config['port']))
         self._server.serve_forever()
 
     def not_found(self, error):
