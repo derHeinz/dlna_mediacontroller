@@ -34,18 +34,16 @@ class TestWebServer(unittest.TestCase):
         return t.app.test_client()
 
     def test_not_found(self):
-        client = self.client()
-
-        response = client.get("/foo-bar-not-found")
-        self.assertEqual(404, response.status_code)
-        self.assertTrue(b"error" in response.data)
+        with self.client() as client:
+            response = client.get("/foo-bar-not-found")
+            self.assertEqual(404, response.status_code)
+            self.assertTrue(b"error" in response.data)
 
     def test_index(self):
-        client = self.client()
-
-        response = client.get("/")
-        self.assertEqual(200, response.status_code)
-        self.assertEqual(b"DLNA Media Controller", response.data)
+        with self.client() as client:
+            response = client.get("/")
+            self.assertEqual(200, response.status_code)
+            self.assertEqual(b"DLNA Media Controller", response.data)
 
     def _test_info(self):
         client = self.client()
