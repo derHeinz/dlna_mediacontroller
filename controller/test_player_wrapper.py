@@ -38,7 +38,7 @@ class TestPlayerWrapper(unittest.TestCase):
         disc_player.ConnectionManager.GetProtocolInfo.return_value = protocol
 
         return disc_player
-    
+
     def create_discovered_player(self):
         device = MagicMock()
         device.friendly_name = 'foo'
@@ -155,13 +155,13 @@ class TestPlayerWrapper(unittest.TestCase):
 
     @patch('upnpclient.Device')
     def test_configured(self, device_constructor: MagicMock):
-        
+
         p = configure(self.DEFAULT_CONFIG)
-        player = p.get_dlna_player()
+        p.get_dlna_player()
         device_constructor.assert_called_with(self.DEFAULT_CONFIG['url'])
 
         device_constructor.reset_mock()
-        player = p.get_dlna_player()
+        p.get_dlna_player()
         device_constructor.assert_not_called()
 
     def test_configured_and_discovered(self):

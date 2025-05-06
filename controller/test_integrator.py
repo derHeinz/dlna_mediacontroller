@@ -422,7 +422,7 @@ class TestIntegratorPlayFunctions(TestIntegratorBase):
         self.SCHEDULER.start_job.assert_not_called()
         self._assert_state(i._state, running=False, looping=False, last_played_url=self.URL, description="Aus",
                            stop_reason="interrupted")
-        
+
     @patch("controller.test_integrator.FakeServer.search")
     def test_play_url_after_item(self, mediaserver_search_mock):
         i = self._testee()
@@ -585,7 +585,7 @@ class TestIntegratorPlayFunctions(TestIntegratorBase):
                            last_played_artist=item_1.actor, last_played_title=item_1.title,
                            running=True, looping=True, description="Spielt Medien mit 'must go'",
                            next_play_url=item_2.url, next_play_item=item_2)
-        
+
         # loop2
         self.PLAYER_DLNA.reset_mock()
         self.PLAYER_DLNA.get_state.return_value = PlayerState(TRANSPORT_STATE.TRANSITIONING, item_2.url, None, 0)
@@ -607,7 +607,6 @@ class TestIntegratorPlayFunctions(TestIntegratorBase):
                            last_played_artist=item_3.actor, last_played_title=item_3.title,
                            running=True, looping=True, description="Spielt Medien mit 'must go'",
                            next_play_url=item_1.url, next_play_item=item_1)
-        
 
     @patch("controller.test_integrator.FakeServer.search")
     def test_play_loop_scenario_3(self, mediaserver_search_mock):

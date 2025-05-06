@@ -1,7 +1,6 @@
 import logging
 from flask.json import jsonify
 import time
-import os
 
 from flask import Flask, make_response, request
 from werkzeug.serving import make_server

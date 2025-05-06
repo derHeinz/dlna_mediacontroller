@@ -100,7 +100,7 @@ class PlayerWrapper():
                 self._upnp_device = upnpclient.Device(self.get_url())
             self._dlna_player = Player(self._upnp_device, self.include_metadata())
         return self._dlna_player
-    
+
     def to_view(self):
         return {
             'configured_meta': asdict(self._configured_meta) if self._configured_meta is not None else None,

@@ -67,21 +67,22 @@ class State():
         artist = self.last_played_item.get_actor() if self.last_played_item is not None else None
         return (title, artist)
 
+    def _type_text(self, type: str):
+        if type == "audio":
+            return "Lieder"
+        elif type == "video":
+            return "Videos"
+        elif type == "image":
+            return "Bilder"
+        else:
+            return "Medien"
+
     def _calculate_description(self):
         if self.current_command.loop:
             if self.current_command.url:
                 return "Wiederholt " + self.current_command.url
-            
-            msg = "Spielt "
-            if self.current_command.type == "audio":
-                msg += "Lieder"
-            elif self.current_command.type == "video":
-                msg += "Videos"
-            elif self.current_command.type == "image":
-                msg += "Bilder"
-            else:
-                msg += "Medien"
 
+            msg = "Spielt " + self._type_text(self.current_command.type)
             # take the information from request
             if self.current_command.artist:
                 msg += " von " + self.current_command.artist

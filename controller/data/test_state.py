@@ -161,5 +161,3 @@ class TestState(unittest.TestCase):
 
         t.now_playing(None, MyItem('Bar', None))
         self.assertEqual('Spielt Bar', t._calculate_description())
-
-

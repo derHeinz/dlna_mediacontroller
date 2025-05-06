@@ -32,8 +32,8 @@ class TestPlayerManager(unittest.TestCase):
         m = self._testee()
         configure.assert_called()
 
-        p = m.get_players()
-        v = m.get_player_views()
+        m.get_players()
+        m.get_player_views()
 
     @patch("controller.player_manager.discover")
     @patch("controller.player_manager.configure")

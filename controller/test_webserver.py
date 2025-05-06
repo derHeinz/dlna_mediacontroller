@@ -1,6 +1,5 @@
 import unittest
 from unittest.mock import patch, MagicMock
-from threading import Thread
 
 from controller.webserver import WebServer
 from controller.appinfo import AppInfo
@@ -14,8 +13,8 @@ class TestWebServer(unittest.TestCase):
         def __init__(self, l_p_u):
             self.last_played_url = l_p_u
 
-    DEFAULT_DISPATCHER = MagicMock()
-    APPINFO = MagicMock(spec=AppInfo)
+    DEFAULT_DISPATCHER: MagicMock = MagicMock()
+    APPINFO: MagicMock = MagicMock(spec=AppInfo)
 
     DEFAULT_TARGET_JSON = {'target': 'a'}
     DEFAULT_JSON = {'target': 'a', 'url': 'url'}
@@ -26,7 +25,7 @@ class TestWebServer(unittest.TestCase):
             config = {**config, **additional_config}
         return WebServer(config, self.DEFAULT_DISPATCHER, self.APPINFO)
 
-    def client(self, webserver = None):
+    def client(self, webserver=None):
         self._webserver = webserver
         if (not webserver):
             self._webserver = self._create_webserver()
@@ -162,7 +161,7 @@ class TestWebServer(unittest.TestCase):
 
     def test_exit(self):
         webserver = self._create_webserver()
-        
+
         with patch.object(webserver, '_exit_program', wraps=webserver._exit_program) as wrapped_exit:
             wrapped_exit.return_value = None  # make it not a spy, thus method not called
             client = self.client(webserver)

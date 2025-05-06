@@ -28,7 +28,7 @@ class TestAppInfo(unittest.TestCase):
 
         def yield_number():
             return 42
-        
+
         t.register('foo', yield_number)
 
         res = t.get()
